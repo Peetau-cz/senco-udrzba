@@ -97,6 +97,35 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 5. **Oblasti údržby jsou data, ne výčet v kódu.** Šestá oblast je záznam v číselníku,
    ne nasazení nové verze.
 
+## Firemní síť: `npm install` visí bez chybové hlášky
+
+Firemní proxy provádí inspekci TLS. Windows její kořenové autoritě věří, ale Node má
+vlastní seznam autorit a nevidí ji — `npm install` se pak zasekne a nic nevypíše.
+Projeví se to tak, že `node_modules` nevzniká a proces skoro nevytěžuje procesor.
+
+Ověření:
+
+```powershell
+node -e "require('https').get('https://registry.npmjs.org/next', r => console.log(r.statusCode)).on('error', e => console.log(e.message))"
+```
+
+Když vypíše `self-signed certificate in certificate chain`, vyexportujte důvěryhodné
+autority z Windows a nasměrujte na ně Node:
+
+```powershell
+$pem = "$env:USERPROFILE\ca-bundle-windows.pem"
+$radky = foreach ($c in (Get-ChildItem Cert:\LocalMachine\Root, Cert:\CurrentUser\Root)) {
+  "-----BEGIN CERTIFICATE-----"
+  [Convert]::ToBase64String($c.RawData, 'InsertLineBreaks')
+  "-----END CERTIFICATE-----"
+}
+Set-Content -Path $pem -Value ($radky -join "`n") -Encoding ascii
+[Environment]::SetEnvironmentVariable('NODE_EXTRA_CA_CERTS', $pem, 'User')
+```
+
+Node pak věří přesně tomu, čemu věří systém. **Nepoužívejte `strict-ssl false` ani
+`NODE_TLS_REJECT_UNAUTHORIZED=0`** — to ověřování certifikátů vypne úplně.
+
 ## Bezpečnostní upozornění
 
 `npm run seed:users` a `npx supabase db reset` **mažou nebo přepisují data**.
