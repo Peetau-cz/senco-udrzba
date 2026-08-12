@@ -23,8 +23,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
 
-    "@supabase/supabase-js": "^2.47.10",
-    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/ssr": "^0.12.4",
 
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-table": "^8.20.5",

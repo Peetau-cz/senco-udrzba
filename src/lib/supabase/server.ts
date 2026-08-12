@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { env } from '@/lib/env'
 import type { Database } from '@/types/database.types'
@@ -21,7 +21,10 @@ export async function vytvorServerovehoKlienta() {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
+        // Typ je nutné uvést ručně: volba `cookies` je v @supabase/ssr sjednocený
+        // typ (nové getAll/setAll vs. zastaralé get/set/remove) a přes union se
+        // kontextové odvození parametru nechytí.
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options)

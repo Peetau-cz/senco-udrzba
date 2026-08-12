@@ -52,13 +52,10 @@ export const nactiPrihlaseneho = cache(async (): Promise<PrihlasenyUzivatel | nu
   const jmeno = profilVysledek.data?.jmeno ?? ''
   const prijmeni = profilVysledek.data?.prijmeni ?? ''
 
+  // Vnořený dotaz vrací u vazby N:1 jeden objekt, ne pole.
   const role = (roleVysledek.data ?? [])
-    .map((radek) => {
-      const vazba = radek.role as { kod: string } | { kod: string }[] | null
-      if (!vazba) return null
-      return Array.isArray(vazba) ? (vazba[0]?.kod ?? null) : vazba.kod
-    })
-    .filter((kod): kod is string => kod !== null)
+    .map((radek) => radek.role?.kod)
+    .filter((kod): kod is string => typeof kod === 'string')
     .filter(jeKodRole)
 
   return {
