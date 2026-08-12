@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked > src/types/database.types.ts",
-    "seed:users": "node --env-file=.env.local scripts/seed-users.mjs"
+    "seed:users": "node --env-file=.env.local scripts/seed-users.mjs",
+    "overit:rls": "node --env-file=.env.local scripts/overit-rls.mjs"
   },
   "dependencies": {
     "next": "^15.1.0",

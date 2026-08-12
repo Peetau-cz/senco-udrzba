@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+﻿import { expect, test } from '@playwright/test'
 
 /**
  * Smoke test modulu M0.
@@ -17,10 +17,22 @@ const UCTY = {
 
 async function prihlas(page: import('@playwright/test').Page, email: string) {
   await page.goto('/login')
+  await expect(page.getByLabel('Firemní e-mail')).toBeVisible()
   await page.getByLabel('Firemní e-mail').fill(email)
   await page.getByLabel('Heslo').fill(HESLO)
   await page.getByRole('button', { name: 'Přihlásit se' }).click()
   await expect(page).toHaveURL('/')
+}
+
+/**
+ * Odhlášení je server action s přesměrováním. Bez počkání na dokončení by
+ * následující goto('/login') mohlo přijít uprostřed navigace - test pak občas
+ * spadne na tom, že formulář ještě není na stránce.
+ */
+async function odhlas(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Odhlásit' }).click()
+  await expect(page).toHaveURL(/\/login/)
+  await expect(page.getByLabel('Firemní e-mail')).toBeVisible()
 }
 
 test('nepřihlášený uživatel je přesměrován na přihlášení', async ({ page }) => {
@@ -35,7 +47,11 @@ test('nesprávné heslo přihlášení nepustí', async ({ page }) => {
   await page.getByLabel('Heslo').fill('spatne-heslo')
   await page.getByRole('button', { name: 'Přihlásit se' }).click()
 
-  await expect(page.getByRole('alert')).toContainText('Nesprávný e-mail nebo heslo')
+  // Scope na formulář: Next přidává do stránky vlastní prvek s role="alert"
+  // (hlásič změny routy), takže samotné getByRole('alert') je nejednoznačné.
+  await expect(page.locator('form').getByRole('alert')).toContainText(
+    'Nesprávný e-mail nebo heslo',
+  )
   await expect(page).toHaveURL(/\/login/)
 })
 
@@ -45,7 +61,7 @@ test('přihlášení, dashboard a odhlášení', async ({ page }) => {
   // Po přihlášení je první obrazovkou dashboard, nikdy ne seznam zařízení (zadání ř. 56).
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Dobrý den')
 
-  await page.getByRole('button', { name: 'Odhlásit' }).click()
+  await odhlas(page)
   await expect(page).toHaveURL(/\/login/)
 })
 
@@ -58,7 +74,7 @@ test('menu se liší podle role', async ({ page }) => {
   await expect(navigace().getByRole('link', { name: 'Zařízení' })).toBeVisible()
   await expect(navigace().getByRole('link', { name: 'Uživatelé' })).toHaveCount(0)
   await expect(navigace().getByRole('link', { name: 'Audit' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Odhlásit' }).click()
+  await odhlas(page)
 
   // Management - vidí audit, nesmí spravovat uživatele ani číselníky (zadání ř. 49).
   await prihlas(page, UCTY.management)
@@ -69,10 +85,11 @@ test('menu se liší podle role', async ({ page }) => {
 
 test('přepínač oblastí nabízí jen dostupné oblasti', async ({ page }) => {
   // Specialista CNC má jedinou oblast - přepínat není co, jen se zobrazí.
+  // Scope na hlavičku: název oblasti je i na dlaždici "Vaše oblasti" v obsahu.
   await prihlas(page, UCTY.specialistaCnc)
-  await expect(page.getByText('Údržba CNC strojů')).toBeVisible()
+  await expect(page.getByRole('banner').getByText('Údržba CNC strojů')).toBeVisible()
   await expect(page.getByRole('combobox')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Odhlásit' }).click()
+  await odhlas(page)
 
   // Vedoucí údržby má přístup ke všem pěti oblastem (zadání ř. 51).
   await prihlas(page, UCTY.vedouci)
