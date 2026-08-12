@@ -1,4 +1,4 @@
--- =============================================================================
+﻿-- =============================================================================
 -- M0 - Identita a oprávnění
 --
 -- Odpovídá docs/NAVRH.md kap. 2.1 (organizace a lidé), 2.6 (audit) a 3.2 (RLS).
@@ -9,6 +9,24 @@
 -- výhradně uživatelským JWT, servisní klíč se v ní nepoužívá.
 -- Zásada R5: neměnnost auditu se vynucuje odebráním práv, ne konvencí.
 -- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- Databázové role
+--
+-- Pod Supabase už `anon` a `authenticated` existují a tento blok nic neudělá.
+-- Na holém PostgreSQL je vytvoří, aby šlo schéma nasadit i bez Supabase.
+-- -----------------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'anon') then
+    create role anon nologin noinherit;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin noinherit;
+  end if;
+end
+$$;
 
 -- -----------------------------------------------------------------------------
 -- Výčtové typy
@@ -56,9 +74,11 @@ create table public.umisteni (
 
 create index umisteni_nadrazene_idx on public.umisteni (nadrazene_id);
 
--- Rozšíření Supabase Auth. Řádek zakládá trigger nad auth.users (viz níže).
+-- Uživatelé aplikace. Záměrně BEZ cizího klíče do auth.users - viz hlavička
+-- souboru a docs/PORTABILITA.md. Identifikátor dodává systém přihlašování;
+-- pod Supabase je to auth.users.id, doplní jej trigger z migrace 0002.
 create table public.profil (
-  id            uuid primary key references auth.users (id) on delete cascade,
+  id            uuid primary key,
   jmeno         text not null default '',
   prijmeni      text not null default '',
   osobni_cislo  text unique,
@@ -113,6 +133,23 @@ comment on table public.audit_log is
 -- Pevný search_path brání podstrčení objektů z jiného schématu.
 -- -----------------------------------------------------------------------------
 
+-- JEDINÉ místo, kde se schéma ptá, kdo je přihlášený uživatel.
+--
+-- Tahle funkce je švem mezi aplikací a systémem přihlašování. Zde je napsaná
+-- přenositelně: čte proměnnou spojení, kterou nastaví aplikace. Migrace 0002 ji
+-- pro Supabase přepíše na auth.uid(). Přechod na jiné přihlašování je tím pádem
+-- změna jedné funkce, ne deseti politik. Viz docs/PORTABILITA.md.
+create or replace function public.aktualni_uzivatel()
+returns uuid
+language sql
+stable
+as $$
+  select nullif(current_setting('app.uzivatel_id', true), '')::uuid;
+$$;
+
+comment on function public.aktualni_uzivatel is
+  'Vrací id přihlášeného uživatele. Šev mezi schématem a systémem přihlašování.';
+
 create or replace function public.ma_roli(p_kod text)
 returns boolean
 language sql
@@ -124,7 +161,7 @@ as $$
     select 1
     from public.uzivatel_role ur
     join public.role r on r.id = ur.role_id
-    where ur.uzivatel_id = auth.uid()
+    where ur.uzivatel_id = public.aktualni_uzivatel()
       and r.kod = p_kod
   );
 $$;
@@ -147,7 +184,7 @@ as $$
     or exists (
       select 1
       from public.uzivatel_oblast uo
-      where uo.uzivatel_id = auth.uid()
+      where uo.uzivatel_id = public.aktualni_uzivatel()
         and uo.oblast_id = p_oblast
     );
 $$;
@@ -162,7 +199,7 @@ as $$
   select exists (
     select 1
     from public.uzivatel_oblast uo
-    where uo.uzivatel_id = auth.uid()
+    where uo.uzivatel_id = public.aktualni_uzivatel()
       and uo.oblast_id = p_oblast
       and uo.vztah = 'garant'
   );
@@ -181,7 +218,7 @@ as $$
     select 1
     from public.uzivatel_role ur
     join public.role r on r.id = ur.role_id
-    where ur.uzivatel_id = auth.uid()
+    where ur.uzivatel_id = public.aktualni_uzivatel()
       and r.kod <> 'management'
   );
 $$;
@@ -231,7 +268,7 @@ begin
     tg_op,
     v_stary,
     v_novy,
-    auth.uid()
+    public.aktualni_uzivatel()
   );
 
   if tg_op = 'DELETE' then
@@ -241,30 +278,8 @@ begin
 end;
 $$;
 
--- Profil vzniká automaticky s uživatelem, aby nemohl existovat účet bez profilu.
-create or replace function public.zaloz_profil()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-begin
-  insert into public.profil (id, email, jmeno, prijmeni, osobni_cislo)
-  values (
-    new.id,
-    coalesce(new.email, ''),
-    coalesce(new.raw_user_meta_data ->> 'jmeno', ''),
-    coalesce(new.raw_user_meta_data ->> 'prijmeni', ''),
-    nullif(new.raw_user_meta_data ->> 'osobni_cislo', '')
-  )
-  on conflict (id) do nothing;
-  return new;
-end;
-$$;
-
-create trigger po_vzniku_uzivatele
-  after insert on auth.users
-  for each row execute function public.zaloz_profil();
+-- Pozn.: automatické zakládání profilu při vzniku účtu je navázané na konkrétní
+-- systém přihlašování, proto je v migraci 0002.
 
 create trigger oblast_zmeneno_at   before update on public.oblast   for each row execute function public.nastav_zmeneno_at();
 create trigger umisteni_zmeneno_at before update on public.umisteni for each row execute function public.nastav_zmeneno_at();
@@ -336,8 +351,8 @@ create policy profil_select on public.profil
 
 create policy profil_update_vlastni on public.profil
   for update to authenticated
-  using (id = auth.uid() or public.ma_roli('administrator'))
-  with check (id = auth.uid() or public.ma_roli('administrator'));
+  using (id = public.aktualni_uzivatel() or public.ma_roli('administrator'))
+  with check (id = public.aktualni_uzivatel() or public.ma_roli('administrator'));
 
 create policy profil_insert_admin on public.profil
   for insert to authenticated
@@ -347,7 +362,7 @@ create policy profil_insert_admin on public.profil
 create policy uzivatel_role_select on public.uzivatel_role
   for select to authenticated
   using (
-    uzivatel_id = auth.uid()
+    uzivatel_id = public.aktualni_uzivatel()
     or public.ma_roli('administrator')
     or public.ma_roli('vedouci_udrzby')
     or public.ma_roli('management')
@@ -362,7 +377,7 @@ create policy uzivatel_role_zapis on public.uzivatel_role
 create policy uzivatel_oblast_select on public.uzivatel_oblast
   for select to authenticated
   using (
-    uzivatel_id = auth.uid()
+    uzivatel_id = public.aktualni_uzivatel()
     or public.ma_roli('administrator')
     or public.ma_roli('vedouci_udrzby')
     or public.ma_roli('management')
@@ -409,6 +424,7 @@ grant insert, update on public.profil to authenticated;
 revoke insert, update, delete on public.audit_log from authenticated, anon;
 
 grant execute on function
+  public.aktualni_uzivatel(),
   public.ma_roli(text),
   public.ma_pristup_k_oblasti(uuid),
   public.je_garantem_oblasti(uuid),

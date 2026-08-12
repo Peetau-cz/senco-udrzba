@@ -8,6 +8,7 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/NAVRH.md` | Návrh systému — architektura, datový model, role, navigace, wireframy, workflow, stack |
 | `docs/PRIPRAVA_DAT.md` | Co musí dodat garanti oblastí, aby šel systém spustit |
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
+| `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
 Stav: **modul M0 (základ)** — přihlášení, role a oprávnění vynucená v databázi.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
@@ -96,6 +97,9 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
    uživatele česky. Data v UTC, zobrazení `Europe/Prague`.
 5. **Oblasti údržby jsou data, ne výčet v kódu.** Šestá oblast je záznam v číselníku,
    ne nasazení nové verze.
+6. **Schéma je oddělené od systému přihlašování.** Migrace `0001` je čistý PostgreSQL;
+   `0002` je jediný soubor závislý na Supabase. Politiky volají
+   `public.aktualni_uzivatel()`, nikdy `auth.uid()` přímo. Viz `docs/PORTABILITA.md`.
 
 ## Firemní síť: `npm install` visí bez chybové hlášky
 

@@ -81,6 +81,13 @@ Zadání explicitně říká, že záznamy z deníku *neovlivňují plán preven
 matice* (ř. 144). Dvě samostatné tabulky sjednocené až v pohledu historie. Jedna polymorfní
 tabulka by to pravidlo dřív nebo později porušila.
 
+**R6 — Schéma neví, kdo obstarává přihlašování.**
+Doplněno 12. 8. 2026 na základě úvahy o budoucím přesunu na firemní PostgreSQL.
+Migrace `0001` je čistý PostgreSQL, `0002` je jediný soubor závislý na Supabase.
+Politiky se ptají funkce `public.aktualni_uzivatel()`, ne `auth.uid()`, a `profil`
+nemá cizí klíč do `auth.users`. Výměna systému přihlašování je tak změna jedné funkce
+místo deseti politik. Podrobně v `docs/PORTABILITA.md`.
+
 **R5 — Neměnnost se vynucuje granty a triggery, ne konvencí.**
 Na `audit_log`, dokončených zakázkách a záznamech deníku jsou odebrána práva `DELETE`
 a `UPDATE`. RLS řídí viditelnost, nikoli nemazatelnost — to je častý omyl.
