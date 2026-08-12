@@ -1,0 +1,201 @@
+Vývoj webové aplikace pro centrální řízení údržby výrobní společnosti
+Jsi zkušený seniorní softwarový architekt, UX designer a full-stack vývojář se zkušenostmi s vývojem podnikových informačních systémů.
+Tvým úkolem je navrhnout a postupně vytvořit moderní webovou aplikaci pro centrální řízení údržby výrobní společnosti SENCO Příbram.
+Nejde o demonstrační projekt ani jednoduchou evidenci zařízení. Výsledkem musí být produkčně použitelná aplikace, kterou bude denně používat více zaměstnanců současně.
+Aplikace musí být navržena modulárně tak, aby bylo možné ji v budoucnu dále rozšiřovat.
+________________________________________
+Hlavní cíl systému
+Primárním cílem aplikace není evidence zařízení.
+Primárním cílem je centralizace všech činností údržby do jednoho společného systému, který umožní:
+•	sjednotit všechny oblasti údržby, 
+•	odstranit papírovou evidenci a samostatné Excel soubory, 
+•	umožnit více uživatelům pracovat současně, 
+•	sdílet informace mezi jednotlivými profesemi, 
+•	uchovávat kompletní historii všech zařízení, 
+•	poskytovat managementu okamžitý přehled o plnění údržby, 
+•	vytvořit jednoduchý pracovní nástroj pro každodenní používání. 
+________________________________________
+Oblasti údržby
+Systém bude obsahovat následující oblasti:
+1. Údržba CNC strojů
+Garant:
+Specialista CNC
+2. Údržba strojních zařízení
+Garant:
+Pracovníci údržby
+3. Údržba elektro zařízení
+Garant:
+Specialista elektro
+4. Údržba VZV
+Garant:
+Pracovník skladu
+5. Údržba procesu lakování
+Garant:
+Vedoucí lakovny
+Spolupracující osoba:
+Pracovník údržby
+Každá oblast bude mít vlastní zařízení, vlastní šablony údržby, vlastní plán údržby a vlastní historii.
+Všechna data budou uložena v jednom společném systému.
+________________________________________
+Uživatelské role
+Navrhni minimálně tyto role:
+•	Administrátor 
+•	Vedoucí údržby 
+•	Specialista CNC 
+•	Specialista elektro 
+•	Údržbář 
+•	Vedoucí lakovny 
+•	Pracovník skladu 
+•	Management (pouze čtení) 
+Každá role bude mít vlastní oprávnění.
+Vedoucí údržby a management budou mít přístup ke všem oblastem.
+Specialisté budou standardně pracovat pouze se svou oblastí.
+________________________________________
+Dashboard
+Dashboard bude hlavní obrazovkou celé aplikace.
+Po přihlášení nesmí uživatel jako první vidět databázi zařízení.
+Musí okamžitě vidět aktuální stav údržby.
+Dashboard bude zobrazovat například:
+•	dnešní plán údržby, 
+•	dokončené údržby, 
+•	údržby po termínu, 
+•	poslední provedené údržby, 
+•	nejbližší plánované údržby, 
+•	přehled jednotlivých oblastí údržby. 
+Dashboard bude hlavním pracovním nástrojem vedoucího údržby i managementu.
+________________________________________
+Přehled plnění matice údržby
+Jedná se o jednu z nejdůležitějších funkcí aplikace.
+Systém bude automaticky vyhodnocovat plnění plánovaných údržeb.
+Například:
+Oblast	Splněno	Po termínu	Plnění
+CNC	124	2	98 %
+Strojní zařízení	81	5	94 %
+Elektro	47	1	98 %
+Lakovna	36	0	100 %
+VZV	18	0	100 %
+Kliknutím na konkrétní oblast se zobrazí seznam nesplněných nebo blížících se údržeb.
+Tento přehled bude hlavním manažerským pohledem na plnění údržby.
+________________________________________
+Evidence zařízení
+Každé zařízení bude obsahovat například:
+•	název, 
+•	inventární číslo, 
+•	výrobce, 
+•	model, 
+•	výrobní číslo, 
+•	rok výroby, 
+•	umístění, 
+•	fotografie, 
+•	návody k obsluze a údržbě, 
+•	odpovědnou osobu, 
+•	historii zařízení. 
+Aplikace musí umožnit definovat vlastní technické parametry podle typu zařízení.
+________________________________________
+Šablony údržby
+Šablony údržby budou základním stavebním kamenem celého systému.
+Nebude se vytvářet samostatná matice pro každý stroj.
+Budou existovat šablony údržby, které budou přiřazeny jednomu nebo více zařízením stejného typu.
+Například:
+Šablona:
+Mazak Quick Turn 250
+↓
+Používají:
+•	Mazak QT250-01 
+•	Mazak QT250-02 
+•	Mazak QT250-03 
+Pokud se změní obsah nebo interval údržby, upraví se pouze šablona a změna se automaticky projeví u všech zařízení, která ji používají.
+Šablony musí podporovat verzování.
+________________________________________
+Matice údržby
+Každá šablona bude obsahovat vlastní matici údržby.
+Matice bude definovat například:
+•	jednotlivé údržbové úkony, 
+•	interval provádění, 
+•	odpovědnou profesi, 
+•	kontrolní body, 
+•	možnost přiložit fotografie, 
+•	možnost potvrzení provedení. 
+Typ údržby nebude vybírat uživatel.
+Bude automaticky vycházet z matice přiřazené danému zařízení.
+Matice jednotlivých zařízení se mohou významně lišit.
+Aplikace proto nesmí předpokládat jednotnou strukturu matice.
+Musí podporovat libovolný počet různých šablon a různých intervalů.
+________________________________________
+Provedení údržby
+Po otevření plánované údržby bude mít uživatel připravený checklist podle příslušné matice.
+Bude moci:
+•	potvrdit jednotlivé kroky, 
+•	zapisovat poznámky, 
+•	přidat fotografie, 
+•	označit údržbu jako dokončenou. 
+Celý proces musí být co nejjednodušší.
+________________________________________
+Provozní deník
+Vedle plánované údržby bude existovat samostatný modul Provozní deník.
+Slouží k evidenci všech neplánovaných zásahů.
+Například:
+•	výměna žárovky, 
+•	dotažení krytu, 
+•	výměna hadice, 
+•	oprava snímače, 
+•	seřízení, 
+•	čištění. 
+Tyto záznamy se ukládají do historie zařízení, ale neovlivňují plán preventivní údržby ani plnění matice.
+________________________________________
+Historie zařízení
+Každé zařízení bude mít kompletní historii.
+Historie bude obsahovat:
+•	všechny plánované údržby, 
+•	všechny záznamy z provozního deníku, 
+•	fotografie, 
+•	poznámky, 
+•	uživatele, 
+•	datum provedení. 
+Historii nebude možné mazat.
+________________________________________
+Audit
+Systém bude zaznamenávat:
+•	kdo změnu provedl, 
+•	kdy ji provedl, 
+•	co změnil. 
+Auditní historie bude neměnná.
+________________________________________
+Architektura
+Navrhni moderní cloudovou architekturu vhodnou pro současnou práci více uživatelů.
+Nepoužívej localStorage jako hlavní databázi.
+Preferuj:
+•	centrální databázi, 
+•	bezpečné přihlášení, 
+•	více uživatelů současně, 
+•	automatickou synchronizaci dat, 
+•	zálohování, 
+•	možnost budoucího rozšíření. 
+________________________________________
+UX
+Aplikace nesmí být navržena jako databázový formulář.
+Musí být navržena jako každodenní pracovní nástroj.
+Každý uživatel po přihlášení během několika sekund uvidí:
+•	co má dnes udělat, 
+•	co je po termínu, 
+•	co se právě děje v jeho oblasti. 
+Návrh UX musí vycházet z reálných pracovních procesů údržby, nikoli ze struktury databáze.
+Preferuj:
+•	minimum kliknutí, 
+•	jednoduchou navigaci, 
+•	moderní vzhled, 
+•	responzivní design, 
+•	vysokou přehlednost. 
+________________________________________
+Způsob vývoje
+Nezačínej ihned generovat zdrojový kód.
+Nejprve navrhni:
+1.	Architekturu systému. 
+2.	Databázový model. 
+3.	Uživatelské role a oprávnění. 
+4.	Navigaci aplikace. 
+5.	Wireframy hlavních obrazovek. 
+6.	Workflow jednotlivých rolí. 
+7.	Doporučený technologický stack. 
+Po mém schválení začni aplikaci implementovat po jednotlivých modulech.
+Po dokončení každého modulu proveď vlastní kontrolu funkčnosti a pokračuj až po mém schválení.

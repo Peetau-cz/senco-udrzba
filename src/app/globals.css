@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --primary: 217 91% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 42%;
+
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 89%;
+    --input: 214 32% 89%;
+    --ring: 217 91% 40%;
+
+    /* Stavy údržby - jediné místo, kde se definují.
+       Zeleno-červená dvojice je doplněna rozdílem ve světlosti, aby byla
+       čitelná i pro barvosleposti. */
+    --stav-splneno: 152 60% 32%;
+    --stav-dnes: 217 91% 45%;
+    --stav-poterminu: 0 72% 48%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 9%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 47% 12%;
+    --card-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 9%;
+
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 96%;
+
+    --destructive: 0 63% 50%;
+    --destructive-foreground: 210 40% 96%;
+
+    --border: 217 33% 22%;
+    --input: 217 33% 22%;
+    --ring: 217 91% 60%;
+
+    --stav-splneno: 152 50% 45%;
+    --stav-dnes: 217 91% 60%;
+    --stav-poterminu: 0 72% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* Číselné údaje v tabulkách plnění a v přehledech musí lícovat pod sebou. */
+  .cislice-tabulkove {
+    font-variant-numeric: tabular-nums;
+  }
+}

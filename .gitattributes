@@ -1,0 +1,17 @@
+# Jednotné konce řádků v repozitáři. Bez toho hlásí Git na Windows změnu
+# v každém souboru, kterého se dotkne, a diffy se stanou nečitelnými.
+* text=auto eol=lf
+
+# Binární soubory Git nepřevádí.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.xlsx binary
+*.ico binary
+
+# Generované soubory se v přehledu změn sbalí.
+package-lock.json linguist-generated=true
+src/types/database.types.ts linguist-generated=true

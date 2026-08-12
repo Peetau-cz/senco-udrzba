@@ -1,0 +1,51 @@
+# závislosti
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+
+# testy
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+
+# prostředí — do gitu jde pouze .env.example
+.env
+.env.*
+!.env.example
+
+# Supabase
+.branches/
+.temp/
+supabase/.temp/
+
+# Pozn.: src/types/database.types.ts je generovaný (npm run db:types), ale
+# ZÁMĚRNĚ se commituje - jinak by typecheck na čerstvém klonu spadl dřív,
+# než se stihne vygenerovat.
+
+# nástroje a editory
+.vercel/
+.turbo/
+*.tsbuildinfo
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+
+# graphify — znalostní graf se generuje z obsahu repozitáře
+graphify-out/
+
+# logy
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
