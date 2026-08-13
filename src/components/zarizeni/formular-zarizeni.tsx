@@ -16,6 +16,7 @@ import {
   prectiSchema,
   type HodnotyParametru,
 } from '@/lib/zarizeni/parametry'
+import type { NabidkaUmisteni } from '@/lib/umisteni/dotazy'
 import type { StavFormulareZarizeni } from '@/app/(aplikace)/zarizeni/actions'
 
 export type TypProFormular = {
@@ -42,7 +43,7 @@ export type HodnotyZarizeni = {
 type Props = {
   akce: (predchozi: StavFormulareZarizeni, formData: FormData) => Promise<StavFormulareZarizeni>
   typy: TypProFormular[]
-  umisteni: { id: string; nazev: string }[]
+  umisteni: NabidkaUmisteni
   osoby: { id: string; jmeno: string }[]
   hodnoty: HodnotyZarizeni
   zpetHref: string
@@ -159,14 +160,33 @@ export function FormularZarizeni({
 
           <div className="space-y-2">
             <Label htmlFor="umisteni_id">Umístění</Label>
+            {/*
+              Skupiny podle hal. Vybrat jde i halu samotnou - ne každý stroj
+              stojí v provozu. Nativní seznam se skupinami zvládne i tablet.
+            */}
             <Select id="umisteni_id" name="umisteni_id" defaultValue={hodnoty.umisteni_id}>
               <option value="">— neurčeno —</option>
-              {umisteni.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nazev}
-                </option>
+
+              {umisteni.koren ? (
+                <option value={umisteni.koren.id}>{umisteni.koren.nazev} (bez zařazení)</option>
+              ) : null}
+
+              {umisteni.haly.map((hala) => (
+                <optgroup key={hala.id} label={hala.nazev}>
+                  <option value={hala.id}>{hala.nazev} — celá hala</option>
+                  {hala.provozy.map((provoz) => (
+                    <option key={provoz.id} value={provoz.id}>
+                      {provoz.nazev}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
+            {umisteni.haly.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Struktura areálu zatím není zadaná — doplní ji vedoucí údržby v Umístění.
+              </p>
+            ) : null}
             <ChybaPole hlaska={chyba('umisteni_id')} />
           </div>
         </CardContent>

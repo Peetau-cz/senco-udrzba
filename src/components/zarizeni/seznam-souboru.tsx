@@ -1,5 +1,5 @@
 import { FileText, ImageIcon } from 'lucide-react'
-import { TlacitkoSmazatSoubor } from '@/components/zarizeni/tlacitko-smazat-soubor'
+import { TlacitkoSmazat } from '@/components/ui/tlacitko-smazat'
 import { formatDatum } from '@/lib/datum'
 import type { SouborZarizeni } from '@/lib/zarizeni/dotazy'
 import { DRUHY_SOUBORU, formatVelikost, jeObrazek } from '@/lib/zarizeni/soubory'
@@ -72,9 +72,10 @@ export function SeznamSouboru({
                     </div>
 
                     {smiSpravovat ? (
-                      <TlacitkoSmazatSoubor
+                      <TlacitkoSmazat
                         akce={smazAkce.bind(null, zarizeniId, soubor.id)}
                         nazev={soubor.nazev}
+                        popisek="Smazat"
                       />
                     ) : null}
                   </li>

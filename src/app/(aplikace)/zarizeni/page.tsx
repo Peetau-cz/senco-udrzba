@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
+import { cestaUmisteni } from '@/lib/umisteni/zobrazeni'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { nactiCiselniky, nactiSeznamZarizeni } from '@/lib/zarizeni/dotazy'
@@ -184,7 +185,7 @@ export default async function StrankaZarizeni({
                       {z.inventarni_cislo ?? <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="px-4 py-3">{z.typ?.nazev ?? '—'}</td>
-                    <td className="px-4 py-3">{z.umisteni?.nazev ?? '—'}</td>
+                    <td className="px-4 py-3">{cestaUmisteni(z.umisteni)}</td>
                     <td className="px-4 py-3">
                       <ZnackaStavu stav={z.stav} />
                     </td>

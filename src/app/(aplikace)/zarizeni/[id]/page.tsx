@@ -8,6 +8,7 @@ import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { formatDatumCas } from '@/lib/datum'
+import { cestaUmisteni } from '@/lib/umisteni/zobrazeni'
 import { nactiSouboryZarizeni, nactiZarizeni } from '@/lib/zarizeni/dotazy'
 import { nahrajSoubor, smazSoubor } from './soubory-actions'
 import { popisekParametru, prectiSchema, zobrazHodnotu } from '@/lib/zarizeni/parametry'
@@ -93,7 +94,7 @@ export default async function KartaZarizeni({
             <span>·</span>
             <span>{zarizeni.oblast?.nazev}</span>
             <span>·</span>
-            <span>{zarizeni.umisteni?.nazev ?? 'umístění neurčeno'}</span>
+            <span>{cestaUmisteni(zarizeni.umisteni, 'umístění neurčeno')}</span>
             <ZnackaStavu stav={zarizeni.stav} />
           </p>
         </div>
@@ -149,7 +150,7 @@ export default async function KartaZarizeni({
                 <Udaj popisek="Výrobní číslo" hodnota={zarizeni.vyrobni_cislo} />
                 <Udaj popisek="Rok výroby" hodnota={zarizeni.rok_vyroby?.toString()} />
                 <Udaj popisek="Odpovědná osoba" hodnota={odpovedny} />
-                <Udaj popisek="Umístění" hodnota={zarizeni.umisteni?.nazev} />
+                <Udaj popisek="Umístění" hodnota={cestaUmisteni(zarizeni.umisteni)} />
               </dl>
 
               {zarizeni.poznamka ? (

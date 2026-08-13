@@ -8,6 +8,7 @@
  */
 
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
+import { nactiNabidkuUmisteni } from '@/lib/umisteni/dotazy'
 import { STAVY_ZARIZENI, type StavZarizeni } from '@/lib/zarizeni/formular'
 
 /** Stav přichází z adresy, kde může být cokoli. Neznámý se prostě nefiltruje. */
@@ -28,7 +29,7 @@ const SLOUPCE_KARTY = `
   oblast_id, typ_zarizeni_id, umisteni_id, odpovedna_osoba_id,
   typ:typ_zarizeni (id, kod, nazev, schema_parametru),
   oblast (id, kod, nazev),
-  umisteni (id, nazev),
+  umisteni (id, kod, nazev, nadrazene:nadrazene_id (nazev, kod)),
   odpovedny:profil (id, jmeno, prijmeni, email)
 ` as const
 
@@ -188,7 +189,7 @@ export async function nactiCiselniky() {
       .select('id, kod, nazev, oblast_id, schema_parametru')
       .eq('aktivni', true)
       .order('nazev'),
-    supabase.from('umisteni').select('id, kod, nazev').order('nazev'),
+    nactiNabidkuUmisteni(),
     supabase
       .from('profil')
       .select('id, jmeno, prijmeni, email')
@@ -198,7 +199,7 @@ export async function nactiCiselniky() {
 
   return {
     typy: typy.data ?? [],
-    umisteni: umisteni.data ?? [],
+    umisteni,
     osoby: (osoby.data ?? []).map((o) => ({
       id: o.id,
       jmeno: [o.jmeno, o.prijmeni].filter(Boolean).join(' ').trim() || o.email,

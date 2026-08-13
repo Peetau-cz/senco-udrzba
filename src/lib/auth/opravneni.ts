@@ -105,6 +105,9 @@ const MENU: readonly PolozkaMenu[] = [
   { modul: 'denik', href: '/denik', popisek: 'Provozní deník' },
   { modul: 'uzivatele', href: '/nastaveni/uzivatele', popisek: 'Uživatelé' },
   { modul: 'ciselniky', href: '/nastaveni/oblasti', popisek: 'Číselníky' },
+  // Umístění je číselník, proto se řídí stejným právem. Vlastní položku má
+  // proto, že se do něj sahá mnohem častěji než do zbytku nastavení.
+  { modul: 'ciselniky', href: '/nastaveni/umisteni', popisek: 'Umístění' },
   { modul: 'audit', href: '/audit', popisek: 'Audit' },
 ]
 

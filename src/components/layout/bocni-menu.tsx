@@ -8,26 +8,30 @@ import {
   ClipboardList,
   FileStack,
   GaugeCircle,
+  MapPin,
   ScrollText,
   Settings,
   ShieldCheck,
   Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { Modul, PolozkaMenu } from '@/lib/auth/opravneni'
+import type { PolozkaMenu } from '@/lib/auth/opravneni'
 
-const IKONY: Record<Modul, React.ComponentType<{ className?: string }>> = {
-  dashboard: GaugeCircle,
-  plan: CalendarCheck,
-  plneni: ClipboardList,
-  zarizeni: Boxes,
-  sablony: FileStack,
-  denik: ScrollText,
-  historie: ScrollText,
-  provedeni: ClipboardList,
-  uzivatele: Users,
-  ciselniky: Settings,
-  audit: ShieldCheck,
+/**
+ * Ikony podle adresy, ne podle modulu: dvě položky mohou spadat pod stejné
+ * právo (číselníky a umístění) a přesto potřebují každá svou ikonu.
+ */
+const IKONY: Record<string, React.ComponentType<{ className?: string }>> = {
+  '/': GaugeCircle,
+  '/plan': CalendarCheck,
+  '/plneni': ClipboardList,
+  '/zarizeni': Boxes,
+  '/sablony': FileStack,
+  '/denik': ScrollText,
+  '/nastaveni/uzivatele': Users,
+  '/nastaveni/oblasti': Settings,
+  '/nastaveni/umisteni': MapPin,
+  '/audit': ShieldCheck,
 }
 
 export function BocniMenu({ polozky }: { polozky: PolozkaMenu[] }) {
@@ -36,13 +40,13 @@ export function BocniMenu({ polozky }: { polozky: PolozkaMenu[] }) {
   return (
     <nav aria-label="Hlavní navigace" className="flex flex-col gap-1 p-3">
       {polozky.map((polozka) => {
-        const Ikona = IKONY[polozka.modul]
+        const Ikona = IKONY[polozka.href] ?? Settings
         const jeAktivni =
           polozka.href === '/' ? cesta === '/' : cesta.startsWith(polozka.href)
 
         return (
           <Link
-            key={polozka.modul}
+            key={polozka.href}
             href={polozka.href}
             aria-current={jeAktivni ? 'page' : undefined}
             className={cn(
