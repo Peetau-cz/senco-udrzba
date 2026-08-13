@@ -11,9 +11,9 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
 Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
-**M1 (evidence zařízení)** rozpracovaný: schéma, karty, formuláře i přílohy
-(fotky, návody, certifikáty) stojí. Zbývá správa typů a jejich parametrů
-a strom umístění.
+**M1 (evidence zařízení)** rozpracovaný: schéma, karty, formuláře, přílohy
+(fotky, návody, certifikáty) i správa typů a jejich vlastních parametrů stojí.
+Zbývá strom umístění.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -113,7 +113,8 @@ a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodes
 4. **Databáze česky bez diakritiky** (`snake_case`), **kód anglicky**, texty pro
    uživatele česky. Data v UTC, zobrazení `Europe/Prague`.
 5. **Oblasti údržby jsou data, ne výčet v kódu.** Šestá oblast je záznam v číselníku,
-   ne nasazení nové verze.
+   ne nasazení nové verze. Totéž platí pro typy zařízení a jejich technické parametry —
+   garant si je nastaví v `/zarizeni/typy`, aniž by se sahalo na kód.
 6. **Schéma je oddělené od systému přihlašování.** Migrace `0001` je čistý PostgreSQL;
    `0002` je jediný soubor závislý na Supabase. Politiky volají
    `public.aktualni_uzivatel()`, nikdy `auth.uid()` přímo. Viz `docs/PORTABILITA.md`.

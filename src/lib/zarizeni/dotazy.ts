@@ -92,6 +92,43 @@ export async function nactiZarizeni(id: string) {
   return data
 }
 
+const SLOUPCE_TYPU = `
+  id, kod, nazev, popis, aktivni, oblast_id, schema_parametru, vytvoreno_at, zmeneno_at,
+  oblast (id, kod, nazev),
+  zarizeni (count)
+` as const
+
+export async function nactiTypy() {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data, error } = await supabase.from('typ_zarizeni').select(SLOUPCE_TYPU).order('nazev')
+
+  if (error) throw new Error(`Nepodařilo se načíst typy zařízení: ${error.message}`)
+
+  return data ?? []
+}
+
+export async function nactiTyp(id: string) {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data, error } = await supabase
+    .from('typ_zarizeni')
+    .select(SLOUPCE_TYPU)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw new Error(`Nepodařilo se načíst typ zařízení: ${error.message}`)
+
+  return data
+}
+
+export type TypZarizeni = NonNullable<Awaited<ReturnType<typeof nactiTyp>>>
+
+/** Vnořený součet chodí jako pole s jedním prvkem, ne jako číslo. */
+export function pocetZarizeni(typ: { zarizeni?: { count: number }[] | null }): number {
+  return typ.zarizeni?.[0]?.count ?? 0
+}
+
 /** Nádoba v Supabase Storage. Vzniká v migraci 0004 a je neveřejná. */
 export const NADOBA_SOUBORU = 'zarizeni'
 

@@ -27,6 +27,14 @@ export type DefiniceParametru = {
   povinne?: boolean
   /** Povinné a neprázdné u typu 'vyber', jinak se pole nedá vyplnit. */
   moznosti?: string[]
+  /**
+   * Pořadí ve formuláři i v kartě.
+   *
+   * Bez něj by se parametry řadily tak, jak je vrátí `jsonb` - a ten klíče řadí
+   * podle délky a bajtů, ne podle toho, jak je garant zadal. „Otáčky" by se pak
+   * objevily až za „Chlazením" a nikdo by nepochopil proč.
+   */
+  poradi?: number
 }
 
 export type SchemaParametru = Record<string, DefiniceParametru>
@@ -51,7 +59,15 @@ export function prectiSchema(surove: unknown): SchemaParametru {
 
   const schema: SchemaParametru = {}
 
-  for (const [klic, definice] of Object.entries(surove)) {
+  // Vkládá se v pořadí, které určil garant. Objekt v JavaScriptu si pořadí
+  // textových klíčů pamatuje, takže Object.entries pak vrací totéž.
+  const serazene = Object.entries(surove).sort(([, a], [, b]) => {
+    const poradiA = jeObjekt(a) && typeof a.poradi === 'number' ? a.poradi : Number.MAX_SAFE_INTEGER
+    const poradiB = jeObjekt(b) && typeof b.poradi === 'number' ? b.poradi : Number.MAX_SAFE_INTEGER
+    return poradiA - poradiB
+  })
+
+  for (const [klic, definice] of serazene) {
     if (!jeObjekt(definice)) continue
 
     const typ = definice.typ
@@ -69,6 +85,7 @@ export function prectiSchema(surove: unknown): SchemaParametru {
       jednotka: typeof definice.jednotka === 'string' ? definice.jednotka : undefined,
       povinne: definice.povinne === true,
       moznosti,
+      poradi: typeof definice.poradi === 'number' ? definice.poradi : undefined,
     }
   }
 

@@ -58,21 +58,13 @@ export default async function StrankaZarizeni({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Zařízení</h1>
-          <p className="text-muted-foreground">
-            {zarizeni.length === 0
-              ? 'Evidence strojů a jejich technických údajů.'
-              : `Celkem ${zarizeni.length} zařízení.`}
-          </p>
-        </div>
-
-        {smiSpravovat ? (
-          <Button asChild size="dotyk">
-            <Link href="/zarizeni/nove">Nové zařízení</Link>
-          </Button>
-        ) : null}
+      <div>
+        <h1 className="text-2xl font-semibold">Zařízení</h1>
+        <p className="text-muted-foreground">
+          {zarizeni.length === 0
+            ? 'Evidence strojů a jejich technických údajů.'
+            : `Celkem ${zarizeni.length} zařízení.`}
+        </p>
       </div>
 
       <Card>
@@ -128,6 +120,17 @@ export default async function StrankaZarizeni({
           </form>
         </CardContent>
       </Card>
+
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button asChild size="dotyk" variant="outline">
+          <Link href="/zarizeni/typy">Typy zařízení</Link>
+        </Button>
+        {smiSpravovat ? (
+          <Button asChild size="dotyk">
+            <Link href="/zarizeni/nove">Nové zařízení</Link>
+          </Button>
+        ) : null}
+      </div>
 
       {zarizeni.length === 0 ? (
         <Card>

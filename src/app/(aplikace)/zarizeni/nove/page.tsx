@@ -58,8 +58,10 @@ export default async function StrankaNoveZarizeni() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Nahrajte číselník typů (<code>supabase/seed_cnc.sql</code>) nebo požádejte
-            administrátora.
+            <Link href="/zarizeni/typy/novy" className="underline">
+              Založte první typ zařízení
+            </Link>{' '}
+            nebo nahrajte číselník (<code>supabase/seed_cnc.sql</code>).
           </CardContent>
         </Card>
       ) : (

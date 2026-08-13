@@ -201,7 +201,14 @@ export default async function KartaZarizeni({
           <CardContent>
             {Object.keys(schema).length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Tento typ zatím nemá určené žádné parametry. Doplní je garant oblasti.
+                Tento typ zatím nemá určené žádné parametry.{' '}
+                {smiUpravovat && zarizeni.typ ? (
+                  <Link href={`/zarizeni/typy/${zarizeni.typ.id}`} className="underline">
+                    Doplňte je u typu {zarizeni.typ.nazev}
+                  </Link>
+                ) : (
+                  'Doplní je garant oblasti.'
+                )}
               </p>
             ) : (
               <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">

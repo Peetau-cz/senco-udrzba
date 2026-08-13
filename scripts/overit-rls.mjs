@@ -151,7 +151,7 @@ async function main() {
     const dbVedouci = await jako('vedouci@senco.test')
     const { data: typy } = await dbVedouci
       .from('typ_zarizeni')
-      .select('id, kod, oblast_id, oblast(kod)')
+      .select('id, kod, nazev, oblast_id, oblast(kod)')
 
     const typCnc = (typy ?? []).find((t) => t.oblast?.kod === 'cnc')
 
@@ -187,6 +187,26 @@ async function main() {
         .from('zarizeni')
         .insert({ oblast_id: typCnc.oblast_id, typ_zarizeni_id: typCnc.id, nazev: 'RLS TEST - SMAZAT' })
       overit('management NESMÍ založit zařízení', chybaManagementu !== null, 'zápis prošel!')
+
+      // Typy zařízení mají stejná pravidla jako evidence. Zamítnutý UPDATE
+      // nehlásí chybu, jen nezmění řádek - proto se počítají vrácené řádky.
+      // Zapisuje se tatáž hodnota, jakou typ už má: kdyby politika nedržela,
+      // test to pozná, ale data zůstanou nedotčená.
+      const { data: zmenaManagementem } = await dbManagement
+        .from('typ_zarizeni')
+        .update({ nazev: typCnc.nazev })
+        .eq('id', typCnc.id)
+        .select('id')
+      overit(
+        'management NESMÍ měnit typy zařízení',
+        (zmenaManagementem ?? []).length === 0,
+        'úprava prošla!',
+      )
+
+      const { error: chybaTypuUdrzbare } = await dbUdrzbar
+        .from('typ_zarizeni')
+        .insert({ oblast_id: typCnc.oblast_id, kod: 'rls_test_smazat', nazev: 'RLS TEST' })
+      overit('údržbář NESMÍ zakládat typy', chybaTypuUdrzbare !== null, 'zápis prošel!')
     }
   }
 
