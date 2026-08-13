@@ -518,7 +518,7 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M3** Plán a provedení | plánovač, zakázky, checklist, foto, přepočet termínů | technik provede reálnou údržbu |
 | **M4** Dashboard a plnění | KPI, dnešní plán, po termínu, matice plnění, export | vedoucí a management mají přehled |
 | **M5** Deník a historie | neplánované zásahy, sjednocená historie | kompletní historie zařízení |
-| **M6** Audit a správa | auditní log, správa uživatelů, notifikace | provozní připravenost |
+| **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti, notifikace | provozní připravenost |
 | **M7** Dílna | QR štítky, ladění pro tablet, tisk protokolů | nasazení do provozu |
 
 Rozšíření mimo rozsah zadání, se kterými model počítá, ale neimplementují se teď:
