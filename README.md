@@ -10,7 +10,9 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
-Stav: **modul M0 (základ)** — přihlášení, role a oprávnění vynucená v databázi.
+Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
+**M1 (evidence zařízení)** rozpracovaný: schéma, karty a formuláře stojí, fotky a
+návody přijdou dalším krokem.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -38,7 +40,9 @@ npx supabase init                 # vytvoří supabase/config.toml, migrace nep�
 npx supabase link --project-ref <project-ref>
 npm run db:push
 
-# Číselníky (oblasti a role) - nahrajte supabase/seed.sql v SQL editoru Supabase
+# Číselníky - nahrajte v SQL editoru Supabase v tomto pořadí:
+#   supabase/seed.sql      oblasti a role
+#   supabase/seed_cnc.sql  typy a stroje CNC z docs/Harmonogram_udrzby_CNC_stroju.xlsx
 
 # Testovací uživatelé
 SEED_POTVRDIT_PROSTREDI=ano npm run seed:users
@@ -83,6 +87,7 @@ Zakládá je `npm run seed:users`, heslo pro všechny je `Senco.Test123`
 
 Ověření oprávnění na úrovni databáze: spusťte `supabase/tests/rls.sql` v SQL editoru
 Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popisem.
+Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls`.
 
 ## Zásady, které platí napříč kódem
 

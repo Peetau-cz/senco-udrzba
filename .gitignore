@@ -32,6 +32,7 @@ supabase/.temp/
 # než se stihne vygenerovat.
 
 # nástroje a editory
+.claude/
 .vercel/
 .turbo/
 *.tsbuildinfo

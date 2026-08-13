@@ -145,6 +145,51 @@ async function main() {
     )
   }
 
+  // --- Evidence zařízení, modul M1 ------------------------------------------
+  console.log('\nEvidence zařízení:')
+  {
+    const dbVedouci = await jako('vedouci@senco.test')
+    const { data: typy } = await dbVedouci
+      .from('typ_zarizeni')
+      .select('id, kod, oblast_id, oblast(kod)')
+
+    const typCnc = (typy ?? []).find((t) => t.oblast?.kod === 'cnc')
+
+    if (!typCnc) {
+      overit('typy zařízení pro CNC existují', false, 'spusťte supabase/seed_cnc.sql')
+    } else {
+      const dbCnc = await jako('cnc@senco.test')
+
+      const { data: zarizeni } = await dbCnc.from('zarizeni').select('id, oblast(kod)')
+      const cizi = (zarizeni ?? []).filter((z) => z.oblast?.kod !== 'cnc')
+      overit('specialista CNC vidí jen zařízení své oblasti', cizi.length === 0, `vidí ${cizi.length} cizích`)
+
+      // Parametr mimo schéma typu nesmí projít ani přes REST - hlídá to trigger,
+      // ne formulář.
+      const { error: chybaParametru } = await dbCnc.from('zarizeni').insert({
+        oblast_id: typCnc.oblast_id,
+        typ_zarizeni_id: typCnc.id,
+        nazev: 'RLS TEST - SMAZAT',
+        parametry: { neexistujici_parametr: 1 },
+      })
+      overit('parametr mimo schéma typu neprojde', chybaParametru !== null, 'zápis prošel!')
+
+      // Údržbář je garantem strojní oblasti, ale evidenci nespravuje. Zkouší to
+      // s identifikátorem typu, který mohl zahlédnout v adrese.
+      const dbUdrzbar = await jako('udrzbar@senco.test')
+      const { error: chybaUdrzbare } = await dbUdrzbar
+        .from('zarizeni')
+        .insert({ oblast_id: typCnc.oblast_id, typ_zarizeni_id: typCnc.id, nazev: 'RLS TEST - SMAZAT' })
+      overit('údržbář NESMÍ založit zařízení', chybaUdrzbare !== null, 'zápis prošel!')
+
+      const dbManagement = await jako('management@senco.test')
+      const { error: chybaManagementu } = await dbManagement
+        .from('zarizeni')
+        .insert({ oblast_id: typCnc.oblast_id, typ_zarizeni_id: typCnc.id, nazev: 'RLS TEST - SMAZAT' })
+      overit('management NESMÍ založit zařízení', chybaManagementu !== null, 'zápis prošel!')
+    }
+  }
+
   console.log(`\n${'-'.repeat(50)}`)
   console.log(`Prošlo: ${proslo}   Selhalo: ${selhalo}`)
 

@@ -1,5 +1,6 @@
 /**
- * Typy databáze odpovídající supabase/migrations/0001_identita_a_opravneni.sql.
+ * Typy databáze odpovídající migracím 0001_identita_a_opravneni.sql
+ * a 0003_zarizeni.sql.
  *
  * Tento soubor se běžně GENERUJE příkazem `npm run db:types`. Než bude projekt
  * propojený se Supabase (`supabase link`), je napsaný ručně podle migrace, aby
@@ -233,6 +234,191 @@ export type Database = {
         }
         Relationships: []
       }
+
+      // --- M1: evidence zařízení (migrace 0003) --------------------------------
+
+      typ_zarizeni: {
+        Row: {
+          id: string
+          oblast_id: string
+          kod: string
+          nazev: string
+          popis: string | null
+          schema_parametru: Json
+          aktivni: boolean
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          oblast_id: string
+          kod: string
+          nazev: string
+          popis?: string | null
+          schema_parametru?: Json
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          oblast_id?: string
+          kod?: string
+          nazev?: string
+          popis?: string | null
+          schema_parametru?: Json
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'typ_zarizeni_oblast_id_fkey'
+            columns: ['oblast_id']
+            isOneToOne: false
+            referencedRelation: 'oblast'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      zarizeni: {
+        Row: {
+          id: string
+          oblast_id: string
+          typ_zarizeni_id: string
+          nazev: string
+          inventarni_cislo: string | null
+          vyrobce: string | null
+          model: string | null
+          vyrobni_cislo: string | null
+          rok_vyroby: number | null
+          umisteni_id: string | null
+          odpovedna_osoba_id: string | null
+          stav: Database['public']['Enums']['stav_zarizeni']
+          parametry: Json
+          poznamka: string | null
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          oblast_id: string
+          typ_zarizeni_id: string
+          nazev: string
+          inventarni_cislo?: string | null
+          vyrobce?: string | null
+          model?: string | null
+          vyrobni_cislo?: string | null
+          rok_vyroby?: number | null
+          umisteni_id?: string | null
+          odpovedna_osoba_id?: string | null
+          stav?: Database['public']['Enums']['stav_zarizeni']
+          parametry?: Json
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          oblast_id?: string
+          typ_zarizeni_id?: string
+          nazev?: string
+          inventarni_cislo?: string | null
+          vyrobce?: string | null
+          model?: string | null
+          vyrobni_cislo?: string | null
+          rok_vyroby?: number | null
+          umisteni_id?: string | null
+          odpovedna_osoba_id?: string | null
+          stav?: Database['public']['Enums']['stav_zarizeni']
+          parametry?: Json
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'zarizeni_oblast_id_fkey'
+            columns: ['oblast_id']
+            isOneToOne: false
+            referencedRelation: 'oblast'
+            referencedColumns: ['id']
+          },
+          {
+            // Složený klíč: typ i zařízení musí být ve stejné oblasti.
+            foreignKeyName: 'zarizeni_typ_ze_stejne_oblasti'
+            columns: ['typ_zarizeni_id', 'oblast_id']
+            isOneToOne: false
+            referencedRelation: 'typ_zarizeni'
+            referencedColumns: ['id', 'oblast_id']
+          },
+          {
+            foreignKeyName: 'zarizeni_umisteni_id_fkey'
+            columns: ['umisteni_id']
+            isOneToOne: false
+            referencedRelation: 'umisteni'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zarizeni_odpovedna_osoba_id_fkey'
+            columns: ['odpovedna_osoba_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      zarizeni_soubor: {
+        Row: {
+          id: string
+          zarizeni_id: string
+          druh: Database['public']['Enums']['druh_souboru']
+          nazev: string
+          cesta: string
+          mime: string | null
+          velikost_b: number | null
+          nahral_id: string | null
+          vytvoreno_at: string
+        }
+        Insert: {
+          id?: string
+          zarizeni_id: string
+          druh: Database['public']['Enums']['druh_souboru']
+          nazev: string
+          cesta: string
+          mime?: string | null
+          velikost_b?: number | null
+          nahral_id?: string | null
+          vytvoreno_at?: string
+        }
+        Update: {
+          id?: string
+          zarizeni_id?: string
+          druh?: Database['public']['Enums']['druh_souboru']
+          nazev?: string
+          cesta?: string
+          mime?: string | null
+          velikost_b?: number | null
+          nahral_id?: string | null
+          vytvoreno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'zarizeni_soubor_zarizeni_id_fkey'
+            columns: ['zarizeni_id']
+            isOneToOne: false
+            referencedRelation: 'zarizeni'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zarizeni_soubor_nahral_id_fkey'
+            columns: ['nahral_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -258,9 +444,19 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      spravuje_zarizeni_v_oblasti: {
+        Args: { p_oblast: string }
+        Returns: boolean
+      }
+      je_platne_schema_parametru: {
+        Args: { p_schema: Json }
+        Returns: boolean
+      }
     }
     Enums: {
       vztah_k_oblasti: 'garant' | 'spolupracujici'
+      stav_zarizeni: 'v_provozu' | 'odstaveno' | 'v_oprave' | 'vyrazeno'
+      druh_souboru: 'foto' | 'navod' | 'certifikat'
     }
     CompositeTypes: {
       [_ in never]: never
