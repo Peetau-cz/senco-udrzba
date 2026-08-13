@@ -92,6 +92,55 @@ export async function nactiZarizeni(id: string) {
   return data
 }
 
+/** Nádoba v Supabase Storage. Vzniká v migraci 0004 a je neveřejná. */
+export const NADOBA_SOUBORU = 'zarizeni'
+
+/**
+ * Jak dlouho platí odkaz na soubor. Hodina bohatě stačí na otevření návodu i na
+ * jeho stažení do tabletu, a přitom se odkaz nedá donekonečna přeposílat dál.
+ */
+const PLATNOST_ODKAZU_S = 3600
+
+/**
+ * Soubory ke kartě zařízení i s dočasnými odkazy ke stažení.
+ *
+ * Nádoba je neveřejná, takže se ke každému souboru vydává podepsaný odkaz.
+ * Podepisuje se jedním voláním pro všechny soubory najednou - kdyby se volalo
+ * v cyklu, karta s deseti přílohami by čekala na deset kol sítě.
+ */
+export async function nactiSouboryZarizeni(zarizeniId: string) {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data, error } = await supabase
+    .from('zarizeni_soubor')
+    .select('id, druh, nazev, cesta, mime, velikost_b, vytvoreno_at, nahral:profil (jmeno, prijmeni, email)')
+    .eq('zarizeni_id', zarizeniId)
+    .order('vytvoreno_at', { ascending: false })
+
+  if (error) throw new Error(`Nepodařilo se načíst soubory: ${error.message}`)
+
+  const radky = data ?? []
+  if (radky.length === 0) return []
+
+  const { data: odkazy } = await supabase.storage
+    .from(NADOBA_SOUBORU)
+    .createSignedUrls(
+      radky.map((r) => r.cesta),
+      PLATNOST_ODKAZU_S,
+    )
+
+  const podleCesty = new Map((odkazy ?? []).map((o) => [o.path, o.signedUrl]))
+
+  return radky.map((radek) => ({
+    ...radek,
+    // Když se odkaz nepodaří podepsat, soubor se v seznamu pořád ukáže - jen
+    // bez možnosti otevřít. Lepší než celá karta se zprávou o chybě.
+    odkaz: podleCesty.get(radek.cesta) ?? null,
+  }))
+}
+
+export type SouborZarizeni = Awaited<ReturnType<typeof nactiSouboryZarizeni>>[number]
+
 /** Číselníky pro formulář i filtry. Vše prochází RLS, takže cizí oblast nenabídne. */
 export async function nactiCiselniky() {
   const supabase = await vytvorServerovehoKlienta()

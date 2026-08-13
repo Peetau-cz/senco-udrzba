@@ -2,11 +2,14 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { NahraniSouboru } from '@/components/zarizeni/nahrani-souboru'
+import { SeznamSouboru } from '@/components/zarizeni/seznam-souboru'
 import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { formatDatumCas } from '@/lib/datum'
-import { nactiZarizeni } from '@/lib/zarizeni/dotazy'
+import { nactiSouboryZarizeni, nactiZarizeni } from '@/lib/zarizeni/dotazy'
+import { nahrajSoubor, smazSoubor } from './soubory-actions'
 import { popisekParametru, prectiSchema, zobrazHodnotu } from '@/lib/zarizeni/parametry'
 import type { HodnotyParametru } from '@/lib/zarizeni/parametry'
 
@@ -61,6 +64,11 @@ export default async function KartaZarizeni({
   const smiUpravovat = maPravo(uzivatel.role, 'zarizeni', 'zapis')
   const schema = prectiSchema(zarizeni.typ?.schema_parametru)
   const hodnoty = (zarizeni.parametry ?? {}) as HodnotyParametru
+
+  // Načítá se i pro přehled, ne jen pro záložku Dokumenty - první fotka patří
+  // rovnou na kartu, jak to má wireframe v kap. 5.4.
+  const soubory = await nactiSouboryZarizeni(zarizeni.id)
+  const fotka = soubory.find((s) => s.druh === 'foto' && s.odkaz)
 
   const odpovedny = zarizeni.odpovedny
     ? [celeJmeno(zarizeni.odpovedny), zarizeni.odpovedny.email].find(Boolean)
@@ -124,6 +132,17 @@ export default async function KartaZarizeni({
               <CardTitle className="text-base">Výrobní štítek</CardTitle>
             </CardHeader>
             <CardContent>
+              {fotka?.odkaz ? (
+                // Prosté <img>: odkaz je podepsaný a po hodině vyprší, takže by
+                // ho optimalizátor obrázků stejně neměl jak uložit do cache.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={fotka.odkaz}
+                  alt={`Fotka zařízení ${zarizeni.nazev}`}
+                  className="mb-6 max-h-64 w-full rounded-md border object-contain"
+                />
+              ) : null}
+
               <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                 <Udaj popisek="Výrobce" hodnota={zarizeni.vyrobce} />
                 <Udaj popisek="Model" hodnota={zarizeni.model} />
@@ -199,7 +218,40 @@ export default async function KartaZarizeni({
         </Card>
       ) : null}
 
-      {zalozka === 'plan' || zalozka === 'historie' || zalozka === 'dokumenty' ? (
+      {zalozka === 'dokumenty' ? (
+        <div className="space-y-4">
+          {smiUpravovat ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Nahrát soubor</CardTitle>
+                <CardDescription>
+                  Fotka stroje, návod k obsluze nebo certifikát. Soubory vidí každý, kdo vidí
+                  zařízení; měnit je smí garant oblasti.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <NahraniSouboru akce={nahrajSoubor.bind(null, zarizeni.id)} />
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Přílohy</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SeznamSouboru
+                soubory={soubory}
+                zarizeniId={zarizeni.id}
+                smiSpravovat={smiUpravovat}
+                smazAkce={smazSoubor}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
+      {zalozka === 'plan' || zalozka === 'historie' ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -213,10 +265,9 @@ export default async function KartaZarizeni({
   )
 }
 
-const POPIS_PRAZDNE: Record<'plan' | 'historie' | 'dokumenty', string> = {
+const POPIS_PRAZDNE: Record<'plan' | 'historie', string> = {
   plan: 'Plán úkonů podle šablony doplní moduly M2 a M3.',
   historie: 'Provedené údržby a zápisy z deníku doplní moduly M3 a M5.',
-  dokumenty: 'Fotky, návody a certifikáty přijdou s dokončením modulu M1.',
 }
 
 function Udaj({ popisek, hodnota }: { popisek: string; hodnota?: string | null }) {

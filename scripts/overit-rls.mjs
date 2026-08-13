@@ -190,6 +190,39 @@ async function main() {
     }
   }
 
+  // --- Úložiště příloh, modul M1 --------------------------------------------
+  console.log('\nÚložiště souborů:')
+  {
+    const dbVedouci = await jako('vedouci@senco.test')
+    const { data: stroje } = await dbVedouci.from('zarizeni').select('id, oblast(kod)').limit(50)
+    const strojCnc = (stroje ?? []).find((z) => z.oblast?.kod === 'cnc')
+
+    if (!strojCnc) {
+      overit('existuje zařízení v CNC', false, 'spusťte supabase/seed_cnc.sql')
+    } else {
+      // Typ hlásíme jako PDF schválně: kdyby se zápis odmítl kvůli nepovolenému
+      // typu souboru, netestovali bychom oprávnění, ale seznam přípon.
+      const pokus = (db) =>
+        db.storage
+          .from('zarizeni')
+          .upload(`${strojCnc.id}/rls-test-smazat.pdf`, new Blob(['x']), {
+            contentType: 'application/pdf',
+          })
+
+      const dbUdrzbar = await jako('udrzbar@senco.test')
+      const { error: chybaUdrzbare } = await pokus(dbUdrzbar)
+      overit('údržbář NESMÍ nahrát přílohu do CNC', chybaUdrzbare !== null, 'nahrání prošlo!')
+
+      const dbManagement = await jako('management@senco.test')
+      const { error: chybaManagementu } = await pokus(dbManagement)
+      overit('management NESMÍ nahrát přílohu', chybaManagementu !== null, 'nahrání prošlo!')
+
+      const dbAnonym = klient()
+      const { error: chybaAnonyma } = await pokus(dbAnonym)
+      overit('nepřihlášený NESMÍ nahrát přílohu', chybaAnonyma !== null, 'nahrání prošlo!')
+    }
+  }
+
   console.log(`\n${'-'.repeat(50)}`)
   console.log(`Prošlo: ${proslo}   Selhalo: ${selhalo}`)
 

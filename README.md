@@ -11,8 +11,9 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
 Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
-**M1 (evidence zařízení)** rozpracovaný: schéma, karty a formuláře stojí, fotky a
-návody přijdou dalším krokem.
+**M1 (evidence zařízení)** rozpracovaný: schéma, karty, formuláře i přílohy
+(fotky, návody, certifikáty) stojí. Zbývá správa typů a jejich parametrů
+a strom umístění.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -87,7 +88,18 @@ Zakládá je `npm run seed:users`, heslo pro všechny je `Senco.Test123`
 
 Ověření oprávnění na úrovni databáze: spusťte `supabase/tests/rls.sql` v SQL editoru
 Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popisem.
-Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls`.
+Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
+nahrát přílohu jménem uživatelů, kteří na to nemají právo.
+
+## Přílohy karet zařízení
+
+Fotky, návody a certifikáty leží v **neveřejné** nádobě `zarizeni` v Supabase Storage,
+kterou zakládá migrace `0004_uloziste_zarizeni.sql`. Aplikace k nim vydává podepsané
+odkazy s hodinovou platností — přímý odkaz do úložiště tedy nejde poslat mimo firmu.
+
+Limit je 10 MB na soubor, přijímají se JPG, PNG, WEBP a PDF. Hranice je nastavená na
+třech místech schválně: v rozhraní (kvůli hlášce), na nádobě (kvůli volání API napřímo)
+a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodeslal).
 
 ## Zásady, které platí napříč kódem
 
