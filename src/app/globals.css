@@ -4,70 +4,116 @@
 
 @layer base {
   :root {
+    /* =========================================================================
+       Firemní barvy SENCO - zelená a fialová.
+
+       Definují se JEN tady, všechno ostatní se na ně odkazuje. Až přijdou přesné
+       hodnoty z firemního manuálu, je to změna dvou řádků, ne hledání odstínů po
+       komponentách.
+
+       Rozdělení rolí je záměrné a platí napříč aplikací:
+         zelená  = akce (tlačítka, odkazy, zaměřené pole) a stav „v pořádku"
+         fialová = navigace a zvýraznění (aktivní položka menu, aktivní záložka)
+       Díky tomu se barvy nepřekrývají ve významu - zelené tlačítko je vždy
+       „udělej", fialová plocha vždy „jsi tady".
+       ========================================================================= */
+    /* Odečteno přímo z logotypu (public/logo-senco.webp): zelená #049357,
+       fialová #6c1c75. Desetinná místa nejsou puntičkářství - na celé stupně
+       zaokrouhlený zápis vyjde na #049559 a #6a1c73, tedy vedle. */
+    --znacka-zelena: 154.8 94.7% 29.6%;
+    --znacka-fialova: 293.9 61.4% 28.4%;
+
+    /* Zelená z loga je na text příliš světlá - bílý nápis na ní má 3,85:1, tedy
+       pod hranicí čitelnosti 4,5:1. Rozhraní proto používá tentýž tón o pět
+       procent světlosti tmavší (#037c4a); rozdíl je okem sotva znát, ale text
+       na tlačítkách i v odznacích projde. Logotypový proužek nese zelenou
+       přesnou - text na něm žádný není. Fialová z loga vyhovuje beze změny. */
+    --znacka-zelena-citelna: 155 95% 25%;
+
+    /* Neutrální tóny mají nádech do fialova, aby ladily se značkou. Sytost je
+       nízká schválně - z tabulky zařízení nemá být barevný obraz. */
     --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --foreground: 288 35% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 288 35% 12%;
 
-    --primary: 217 91% 40%;
+    --primary: var(--znacka-zelena-citelna);
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    /* Zvýraznění = firemní fialová. Nese ji navigace, ne akce. */
+    --zvyrazneni: var(--znacka-fialova);
+    --zvyrazneni-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 42%;
+    --secondary: 292 24% 96%;
+    --secondary-foreground: 288 35% 12%;
 
-    --accent: 210 40% 94%;
-    --accent-foreground: 222 47% 11%;
+    --muted: 292 24% 96%;
+    --muted-foreground: 288 12% 42%;
 
-    --destructive: 0 72% 45%;
+    --accent: 294 30% 93%;
+    --accent-foreground: 288 35% 12%;
+
+    /* Červená zůstává červená. Firemní barvy nesmí zabírat význam „chyba". */
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 89%;
-    --input: 214 32% 89%;
-    --ring: 217 91% 40%;
+    --border: 290 20% 88%;
+    --input: 290 20% 88%;
+    --ring: var(--znacka-zelena-citelna);
 
     /* Stavy údržby - jediné místo, kde se definují.
-       Zeleno-červená dvojice je doplněna rozdílem ve světlosti, aby byla
-       čitelná i pro barvosleposti. */
-    --stav-splneno: 152 60% 32%;
-    --stav-dnes: 217 91% 45%;
-    --stav-poterminu: 0 72% 48%;
+       Splněno nese firemní zelenou, dnešní plán firemní fialovou; po termínu
+       zůstává červené. Dvojice zelená-červená je doplněná rozdílem ve světlosti,
+       aby byla čitelná i pro barvosleposti. */
+    --stav-splneno: var(--znacka-zelena-citelna);
+    --stav-dnes: var(--znacka-fialova);
+    --stav-poterminu: 0 72% 42%;
 
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222 47% 9%;
-    --foreground: 210 40% 96%;
+    /* Na tmavém pozadí musí obě firemní barvy zesvětlat, jinak by na nich
+       nebyl vidět text ani ony samy na pozadí. */
+    /* Na tmavém pozadí je to obráceně: obě firemní barvy musí zesvětlat, jinak
+       by na nich nebyl vidět text ani ony samy na pozadí. Tady vystačí jediná
+       zelená - v tomhle jasu je čitelná i jako text i jako plocha. */
+    --znacka-zelena: 155 70% 46%;
+    --znacka-zelena-citelna: 155 70% 46%;
+    --znacka-fialova: 294 60% 66%;
 
-    --card: 222 47% 12%;
-    --card-foreground: 210 40% 96%;
+    --background: 288 30% 9%;
+    --foreground: 292 25% 95%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 9%;
+    --card: 288 26% 12%;
+    --card-foreground: 292 25% 95%;
 
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 96%;
+    --primary: var(--znacka-zelena-citelna);
+    --primary-foreground: 288 40% 8%;
 
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
+    --zvyrazneni: var(--znacka-fialova);
+    --zvyrazneni-foreground: 288 40% 8%;
 
-    --accent: 217 33% 20%;
-    --accent-foreground: 210 40% 96%;
+    --secondary: 288 22% 18%;
+    --secondary-foreground: 292 25% 95%;
 
-    --destructive: 0 63% 50%;
-    --destructive-foreground: 210 40% 96%;
+    --muted: 288 22% 18%;
+    --muted-foreground: 288 15% 68%;
 
-    --border: 217 33% 22%;
-    --input: 217 33% 22%;
-    --ring: 217 91% 60%;
+    --accent: 288 22% 21%;
+    --accent-foreground: 292 25% 95%;
 
-    --stav-splneno: 152 50% 45%;
-    --stav-dnes: 217 91% 60%;
-    --stav-poterminu: 0 72% 60%;
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 288 40% 8%;
+
+    --border: 288 20% 24%;
+    --input: 288 20% 24%;
+    --ring: var(--znacka-zelena-citelna);
+
+    --stav-splneno: var(--znacka-zelena-citelna);
+    --stav-dnes: var(--znacka-fialova);
+    --stav-poterminu: 0 72% 62%;
   }
 }
 
@@ -84,5 +130,17 @@
   /* Číselné údaje v tabulkách plnění a v přehledech musí lícovat pod sebou. */
   .cislice-tabulkove {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Firemní proužek - jediné místo, kde se obě barvy potkávají vedle sebe.
+     Používá se u názvu aplikace, ne jako dekorace kdekoli. */
+  .znacka-pruh {
+    background-image: linear-gradient(
+      90deg,
+      hsl(var(--znacka-zelena)) 0%,
+      hsl(var(--znacka-fialova)) 100%
+    );
   }
 }

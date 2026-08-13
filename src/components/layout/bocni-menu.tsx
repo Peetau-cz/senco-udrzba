@@ -47,8 +47,10 @@ export function BocniMenu({ polozky }: { polozky: PolozkaMenu[] }) {
             aria-current={jeAktivni ? 'page' : undefined}
             className={cn(
               'flex min-h-dotyk items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
+              // Aktivní položka nese firemní fialovou. Zelená patří akcím -
+              // kdyby ji měla i navigace, tlačítko „Uložit" by splynulo s menu.
               jeAktivni
-                ? 'bg-primary text-primary-foreground'
+                ? 'bg-zvyrazneni text-zvyrazneni-foreground'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
             )}
           >

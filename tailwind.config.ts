@@ -33,6 +33,18 @@ const config: Config = {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
         },
+        // Firemní fialová v roli zvýraznění - aktivní položka menu, aktivní
+        // záložka. Akce zůstávají zelené (primary), viz globals.css.
+        zvyrazneni: {
+          DEFAULT: 'hsl(var(--zvyrazneni))',
+          foreground: 'hsl(var(--zvyrazneni-foreground))',
+        },
+        // Přímý přístup k firemním barvám. Používat jen tam, kde nejde o roli
+        // v rozhraní, ale skutečně o značku (proužek u názvu aplikace).
+        znacka: {
+          zelena: 'hsl(var(--znacka-zelena))',
+          fialova: 'hsl(var(--znacka-fialova))',
+        },
         destructive: {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',

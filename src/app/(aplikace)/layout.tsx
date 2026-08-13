@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { BocniMenu } from '@/components/layout/bocni-menu'
 import { Hlavicka } from '@/components/layout/hlavicka'
+import { LogoSenco } from '@/components/layout/logo-senco'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { polozkyMenu } from '@/lib/auth/opravneni'
 
@@ -16,9 +17,12 @@ export default async function AplikacniLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-svh">
       <aside className="hidden w-60 shrink-0 border-r bg-card md:block">
-        <div className="border-b px-4 py-4">
-          <p className="font-semibold">SENCO Údržba</p>
-          <p className="text-xs text-muted-foreground">Příbram</p>
+        <div className="space-y-2 border-b px-4 py-4">
+          <LogoSenco vyska={36} />
+          <div>
+            <p className="font-semibold">SENCO Údržba</p>
+            <p className="text-xs text-muted-foreground">Příbram</p>
+          </div>
         </div>
         <BocniMenu polozky={polozky} />
       </aside>
