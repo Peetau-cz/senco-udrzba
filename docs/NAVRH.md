@@ -14,7 +14,7 @@ Zadání neurčuje šest věcí, které přímo ovlivňují datový model. Všec
 | # | Otázka | Rozhodnutí | Poznámka |
 |---|--------|------------|----------|
 | P1 | Základ intervalu údržby | **POTVRZENO: pouze kalendářní intervaly** (dny, týdny, měsíce, roky) | Motohodiny se neevidují. Výpočet termínu je uzavřen v jediné SQL funkci `dalsi_termin()`, aby případné pozdější doplnění motohodin byla lokální změna, ne přepis plánovače. |
-| P2 | Výpočet dalšího termínu | **POTVRZENO: nastavitelné na úkonu, výchozí plovoucí** (od skutečného provedení) | Odpovídá reálné praxi údržby; fixní varianta zůstává pro revize s pevným datem. Sloupec `interval_zaklad`. |
+| P2 | Výpočet dalšího termínu | **POTVRZENO: nastavitelné na úkonu, výchozí pevný kalendář** (od plánovaného termínu) | Původně se počítalo s plovoucí variantou, zadavatel ale při vkládání harmonogramu CNC upřesnil, že termín je vždy k pevně danému datu. Plovoucí varianta zůstává volitelná na úkonu. Sloupec `interval_zaklad`, výchozí hodnotu mění migrace `0009`. |
 | P3 | Definice „Plnění %" | **POTVRZENO:** `splněno / (splněno + po termínu)` za kalendářní měsíc | Údržba dokončená po termínu se počítá jako *po termínu*. Úkony, jejichž termín ještě nenastal, se nepočítají. Sedí na příklad v zadání (124 / 126 = 98 %). |
 | P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. |
 | P5 | Kde poběží data | **POTVRZENO:** Supabase Cloud, **region EU** | Vývoj běží rovnou proti cloudovému vývojovému projektu, bez Dockeru. Self-hosting zůstává možný bez zásahu do kódu. |
@@ -137,26 +137,63 @@ psát dotazy nad plněním matice.
 
 ### 2.3 Šablony, verzování a matice — jádro systému
 
+Implementováno migrací `supabase/migrations/0006_sablony_udrzby.sql`.
+
 ```
-sablona (id, oblast_id, nazev, popis, aktivni_verze_id)
+sablona (id, oblast_id, kod, nazev, popis, aktivni)
     │
     ├── sablona_verze (id, sablona_id, cislo_verze, stav, platna_od,
     │                  vytvoril_id, poznamka_ke_zmene)
     │       stav: navrh → aktivni → archivovana
-    │       PO AKTIVACI JE ŘÁDEK NEMĚNNÝ (trigger blokuje UPDATE)
+    │       PO AKTIVACI JE ŘÁDEK NEMĚNNÝ (trigger blokuje UPDATE i DELETE)
+    │       částečné unikátní indexy: nejvýš jeden návrh a nejvýš jedna
+    │       aktivní verze na šablonu
     │
     └── sablona_ukon (id, sablona_verze_id, poradi, nazev, popis,
                       interval_typ, interval_hodnota, interval_zaklad,
                       tolerance_dny, profese_role_id, kontrolni_body JSONB,
-                      vyzaduje_foto, vyzaduje_hodnotu, jednotka, mez_min, mez_max)
+                      vyzaduje_foto, vyzaduje_hodnotu, nabizi_poznamku,
+                      jednotka, mez_min, mez_max)
             ← TOTO JE „MATICE ÚDRŽBY"
 
-zarizeni_sablona (zarizeni_id, sablona_id, prirazeno_od)
+zarizeni_sablona (zarizeni_id, sablona_id, oblast_id, prirazeno_od, prirazil_id)
     ← jedna šablona → N zařízení stejného typu (Mazak QT250-01/02/03)
 ```
 
 `interval_typ`: `dny` · `tydny` · `mesice` · `roky` (P1 — pouze kalendářní)
-`interval_zaklad`: `od_provedeni` (výchozí) · `od_planu` (P2 — nastavitelné na úkonu)
+`interval_zaklad`: `od_planu` (výchozí) · `od_provedeni` (P2 — nastavitelné na úkonu)
+
+`kontrolni_body` jsou dílčí kroky uvnitř úkonu a každý má svůj druh zápisu
+(migrace `0007`). Tvar hlídá `CHECK` nad `jsou_platne_kontrolni_body()`:
+
+```json
+[{"nazev": "1000 ot.",      "typ": "hodnota"},
+ {"nazev": "Kryt dotažen",  "typ": "ano_ne"}]
+```
+
+`hodnota` znamená, že technik na tom místě zapíše naměřený údaj v jednotce úkonu;
+`ano_ne` že jen odškrtne. Bez druhu by u bodu typu „Kryt dotažen" neměl technik
+v checklistu co vyplnit — proto to nestačilo řešit jen na úrovni úkonu.
+
+**Co technik u úkonu zapisuje.** Potvrzení **ano/ne má každý úkon z podstaty** —
+je to odpověď na „proběhlo a je to v pořádku?" a neplyne z žádného sloupce.
+Nastavuje se jen to, co k němu přibude: `vyzaduje_foto`, `vyzaduje_hodnotu`
+(s jednotkou a mezemi) a `nabizi_poznamku` (migrace `0008`) — volné pole, kde se
+technik může rozepsat. Prefix `nabizi_` je schválně jiný: to pole je nabídka, ne
+povinnost. Vyžadovat rozepsání u každé údržby by vedlo k tomu, že se tam bude
+psát „ok", aby to šlo odeslat.
+
+**Proč `sablona` nemá `aktivni_verze_id`.** Původní návrh s ním počítal, při implementaci
+se ale ukázal jako druhá pravda vedle `sablona_verze.stav`, kterou by musel dopočítávat
+trigger — a zásada R1 říká, že dvě místa se dřív nebo později rozejdou. Že platí nejvýš
+jedna verze, hlídá částečný unikátní index; databáze to tedy zaručuje silněji, než by
+dokázal dopočítávaný ukazatel. Platná verze se čte jako `stav = 'aktivni'`.
+
+**Proč `zarizeni_sablona` nese `oblast_id`.** Vědomá denormalizace kvůli složeným cizím
+klíčům, které ohlídají, že zařízení i šablona patří do téže oblasti — stejný trik jako
+u dvojice `zarizeni` × `typ_zarizeni` v kap. 2.2. Kvůli tomu má `zarizeni` doplněné
+`unique (id, oblast_id)`. Trigger by to zvládl také, cizí klíč to ale udrží i při
+hromadném CSV importu (P6).
 
 **Jak se řeší rozpor verzování × neměnná historie:**
 
@@ -166,6 +203,17 @@ zarizeni_sablona (zarizeni_id, sablona_id, prirazeno_od)
   Květnový záznam tedy navždy ukazuje květnovou matici, i když se šablona v červnu změní.
 - Bez tohoto oddělení by úprava šablony zpětně přepsala, co technik odškrtal — a historie
   by ztratila důkazní hodnotu.
+
+**Editace šablony není UPDATE.** Jsou to dvě funkce v databázi, protože obojí je víc kroků
+v jedné transakci a supabase-js transakci neumí — půlka provedené aktivace by nechala
+šablonu bez platné verze:
+
+- `zaloz_navrh_verze(sablona)` — založí návrh a zkopíruje do něj právě platnou matici
+  (garant obvykle mění jeden řádek, ne celou matici). Existující návrh vrátí beze změny.
+- `aktivuj_verzi(verze)` — archivuje dosavadní platnou verzi a aktivuje návrh. Verzi bez
+  jediného úkonu odmítne: nemá co plánovat a v M4 by se počítala jako splněná na 100 %.
+
+Obě jsou `SECURITY INVOKER`, takže RLS platí i skrz ně.
 
 ### 2.4 Plánování a provedení
 
