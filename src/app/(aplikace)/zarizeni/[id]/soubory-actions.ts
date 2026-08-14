@@ -2,8 +2,8 @@
 
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
+import { smazSoubory, ulozSoubor } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
-import { NADOBA_SOUBORU } from '@/lib/zarizeni/dotazy'
 import { cestaSouboru, jeDruhSouboru, overSoubor, zkratNazev } from '@/lib/zarizeni/soubory'
 
 export type StavNahrani = {
@@ -51,13 +51,8 @@ export async function nahrajSoubor(
 
   const cesta = cestaSouboru(zarizeniId, soubor.type, randomUUID())
 
-  const { error: chybaUlozeni } = await supabase.storage
-    .from(NADOBA_SOUBORU)
-    .upload(cesta, soubor, { contentType: soubor.type, upsert: false })
-
-  if (chybaUlozeni) {
-    return { chyba: prelozChybuUlozeni(chybaUlozeni.message) }
-  }
+  const chybaUlozeni = await ulozSoubor(cesta, soubor, soubor.type)
+  if (chybaUlozeni) return { chyba: chybaUlozeni }
 
   const { error: chybaZapisu } = await supabase.from('zarizeni_soubor').insert({
     zarizeni_id: zarizeniId,
@@ -72,7 +67,7 @@ export async function nahrajSoubor(
   if (chybaZapisu) {
     // Bez řádku v databázi je soubor v úložišti neviditelný a nikdo ho už
     // nesmaže. Proto se úklid dělá hned, ne až někdy.
-    await supabase.storage.from(NADOBA_SOUBORU).remove([cesta])
+    await smazSoubory([cesta])
     return { chyba: `Soubor se nepodařilo připojit ke kartě: ${chybaZapisu.message}` }
   }
 
@@ -97,29 +92,9 @@ export async function smazSoubor(zarizeniId: string, souborId: string): Promise<
 
   if (!soubor) return
 
-  const { error: chybaUlozeni } = await supabase.storage
-    .from(NADOBA_SOUBORU)
-    .remove([soubor.cesta])
-
-  if (chybaUlozeni) return
+  if (await smazSoubory([soubor.cesta])) return
 
   await supabase.from('zarizeni_soubor').delete().eq('id', souborId)
 
   revalidatePath(`/zarizeni/${zarizeniId}`)
-}
-
-function prelozChybuUlozeni(hlaska: string): string {
-  const male = hlaska.toLowerCase()
-
-  if (male.includes('row-level security') || male.includes('unauthorized')) {
-    return 'Nemáte oprávnění nahrávat soubory k tomuto zařízení.'
-  }
-  if (male.includes('exceeded the maximum allowed size') || male.includes('payload too large')) {
-    return 'Soubor je pro úložiště příliš velký.'
-  }
-  if (male.includes('mime type') || male.includes('not allowed')) {
-    return 'Tenhle typ souboru úložiště nepřijímá.'
-  }
-
-  return `Nahrání selhalo: ${hlaska}`
 }
