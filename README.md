@@ -11,9 +11,12 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
 Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
-**M1 (evidence zařízení)** rozpracovaný: schéma, karty, formuláře, přílohy
-(fotky, návody, certifikáty) i správa typů a jejich vlastních parametrů stojí.
-Zbývá strom umístění.
+**M1 (evidence zařízení)** hotový a čeká na schválení: schéma, karty, formuláře,
+přílohy (fotky, návody, certifikáty), správa typů a jejich vlastních parametrů,
+strom umístění a filtrování seznamu po sloupcích.
+Historie zařízení na kartě záměrně chybí — doplní ji M5.
+Import zařízení z CSV (rozhodnutí P6) se udělá až s M2, aby vznikl jedním
+průchodem i pro šablony.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -42,13 +45,19 @@ npx supabase link --project-ref <project-ref>
 npm run db:push
 
 # Číselníky - nahrajte v SQL editoru Supabase v tomto pořadí:
-#   supabase/seed.sql      oblasti a role
-#   supabase/seed_cnc.sql  typy a stroje CNC z docs/Harmonogram_udrzby_CNC_stroju.xlsx
+#   supabase/seed.sql           oblasti a role
+#   supabase/seed_umisteni.sql  areál, haly a provozy
+#   supabase/seed_cnc.sql       typy a stroje CNC z docs/Harmonogram_udrzby_CNC_stroju.xlsx
 
 # Testovací uživatelé
 SEED_POTVRDIT_PROSTREDI=ano npm run seed:users
 
-# Typy z databáze - MUSÍ proběhnout před typecheckem
+# Přiřazení lidí k oblastem - až po seed:users, potřebuje existující profily
+#   supabase/prirazeni_uzivatelu.sql
+
+# Typy z databáze. Soubor src/types/database.types.ts je v repozitáři, takže
+# tenhle krok NENÍ nutný ke spuštění - a bez propojeného CLI ho nepouštějte
+# vůbec, přepsal by ho prázdným výstupem.
 npm run db:types
 
 npm run dev
@@ -101,6 +110,10 @@ Limit je 10 MB na soubor, přijímají se JPG, PNG, WEBP a PDF. Hranice je nasta
 třech místech schválně: v rozhraní (kvůli hlášce), na nádobě (kvůli volání API napřímo)
 a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodeslal).
 
+Nahrávání, mazání i podepisování odkazů obstarává `src/lib/storage/` — jediné místo,
+které o Supabase Storage ví. Pravidla pro soubory (velikost, typy, cesta) jsou vedle
+v `src/lib/zarizeni/soubory.ts` a jsou schválně bez závislostí, aby se daly testovat.
+
 ## Zásady, které platí napříč kódem
 
 1. **Oprávnění vynucuje databáze, ne aplikace.** Row Level Security je bezpečnostní
@@ -118,6 +131,9 @@ a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodes
 6. **Schéma je oddělené od systému přihlašování.** Migrace `0001` je čistý PostgreSQL;
    `0002` je jediný soubor závislý na Supabase. Politiky volají
    `public.aktualni_uzivatel()`, nikdy `auth.uid()` přímo. Viz `docs/PORTABILITA.md`.
+7. **K úložišti se chodí přes `src/lib/storage/`.** Stránky, serverové akce ani dotazy
+   `supabase.storage` nevolají. Úložiště je ta část Supabase, která se při přesunu na
+   firemní server nepřenese sama — díky téhle vrstvě se mění jeden soubor, ne deset míst.
 
 ## Firemní síť: `npm install` visí bez chybové hlášky
 

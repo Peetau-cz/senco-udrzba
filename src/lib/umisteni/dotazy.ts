@@ -68,8 +68,9 @@ export type NabidkaUmisteni = {
   koren: { id: string; nazev: string } | null
   haly: {
     id: string
+    kod: string
     nazev: string
-    provozy: { id: string; nazev: string }[]
+    provozy: { id: string; kod: string; nazev: string }[]
   }[]
 }
 
@@ -88,8 +89,13 @@ export async function nactiNabidkuUmisteni(): Promise<NabidkaUmisteni> {
     koren: koren ? { id: koren.id, nazev: koren.nazev } : null,
     haly: haly.map((hala) => ({
       id: hala.id,
+      kod: hala.kod,
       nazev: hala.nazev,
-      provozy: hala.deti.map((provoz) => ({ id: provoz.id, nazev: provoz.nazev })),
+      provozy: hala.deti.map((provoz) => ({
+        id: provoz.id,
+        kod: provoz.kod,
+        nazev: provoz.nazev,
+      })),
     })),
   }
 }

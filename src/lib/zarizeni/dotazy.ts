@@ -7,6 +7,7 @@
  * druhá pravda, kterou by nikdo neudržoval (zásada R1).
  */
 
+import { odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { nactiNabidkuUmisteni } from '@/lib/umisteni/dotazy'
 import { STAVY_ZARIZENI, type StavZarizeni } from '@/lib/zarizeni/formular'
@@ -16,11 +17,14 @@ function jeStav(hodnota: string): hodnota is StavZarizeni {
   return STAVY_ZARIZENI.some((s) => s.hodnota === hodnota)
 }
 
+// Nadřazené umístění se tahá i do seznamu: samotné „CNC" nebo „Linka B" neřekne,
+// ve které hale to je - a když se teď dá podle haly filtrovat, musí být ve
+// výsledku vidět, proč tam řádek je.
 const SLOUPCE_SEZNAMU = `
   id, nazev, inventarni_cislo, stav, vyrobce, model, rok_vyroby,
   typ:typ_zarizeni (id, kod, nazev),
   oblast (id, kod, nazev),
-  umisteni (id, nazev)
+  umisteni (id, nazev, nadrazene:nadrazene_id (nazev, kod))
 ` as const
 
 const SLOUPCE_KARTY = `
@@ -41,7 +45,12 @@ export type FiltrZarizeni = {
   oblastId?: string
   typId?: string
   stav?: string
-  hledani?: string
+  /** Hledá se i ve výrobci a modelu - v seznamu stojí pod názvem, takže je
+   *  uživatel bere jako součást téhož sloupce. */
+  nazev?: string
+  inventarniCislo?: string
+  /** Hala se rozpadá na sebe a své provozy, viz `idsUmisteniProFiltr`. */
+  umisteniIds?: string[]
 }
 
 /**
@@ -64,11 +73,19 @@ export async function nactiSeznamZarizeni(filtr: FiltrZarizeni) {
   if (filtr.oblastId) dotaz = dotaz.eq('oblast_id', filtr.oblastId)
   if (filtr.typId) dotaz = dotaz.eq('typ_zarizeni_id', filtr.typId)
   if (filtr.stav && jeStav(filtr.stav)) dotaz = dotaz.eq('stav', filtr.stav)
+  if (filtr.umisteniIds?.length) dotaz = dotaz.in('umisteni_id', filtr.umisteniIds)
 
-  const hledani = filtr.hledani ? ocistiHledani(filtr.hledani) : ''
-  if (hledani) {
-    dotaz = dotaz.or(`nazev.ilike.%${hledani}%,inventarni_cislo.ilike.%${hledani}%`)
+  // Filtry se skládají a platí zároveň: „Mazak" v názvu a „12" v inventárním
+  // čísle vrátí jen stroje, které splní obojí. Uvnitř jednoho sloupce se hledá
+  // kdekoli v textu (`%text%`), aby stačil útržek - obsluha si celý název
+  // stroje nepamatuje, pamatuje si kus.
+  const nazev = filtr.nazev ? ocistiHledani(filtr.nazev) : ''
+  if (nazev) {
+    dotaz = dotaz.or(`nazev.ilike.%${nazev}%,vyrobce.ilike.%${nazev}%,model.ilike.%${nazev}%`)
   }
+
+  const inventarniCislo = filtr.inventarniCislo ? ocistiHledani(filtr.inventarniCislo) : ''
+  if (inventarniCislo) dotaz = dotaz.ilike('inventarni_cislo', `%${inventarniCislo}%`)
 
   const { data, error } = await dotaz
 
@@ -130,28 +147,20 @@ export function pocetZarizeni(typ: { zarizeni?: { count: number }[] | null }): n
   return typ.zarizeni?.[0]?.count ?? 0
 }
 
-/** Nádoba v Supabase Storage. Vzniká v migraci 0004 a je neveřejná. */
-export const NADOBA_SOUBORU = 'zarizeni'
-
-/**
- * Jak dlouho platí odkaz na soubor. Hodina bohatě stačí na otevření návodu i na
- * jeho stažení do tabletu, a přitom se odkaz nedá donekonečna přeposílat dál.
- */
-const PLATNOST_ODKAZU_S = 3600
-
 /**
  * Soubory ke kartě zařízení i s dočasnými odkazy ke stažení.
  *
  * Nádoba je neveřejná, takže se ke každému souboru vydává podepsaný odkaz.
- * Podepisuje se jedním voláním pro všechny soubory najednou - kdyby se volalo
- * v cyklu, karta s deseti přílohami by čekala na deset kol sítě.
+ * Jak se podepisuje, ví `lib/storage` - sem to nepatří (PORTABILITA pravidlo 5).
  */
 export async function nactiSouboryZarizeni(zarizeniId: string) {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
     .from('zarizeni_soubor')
-    .select('id, druh, nazev, cesta, mime, velikost_b, vytvoreno_at, nahral:profil (jmeno, prijmeni, email)')
+    .select(
+      'id, druh, nazev, cesta, mime, velikost_b, vytvoreno_at, nahral:profil (jmeno, prijmeni, email)',
+    )
     .eq('zarizeni_id', zarizeniId)
     .order('vytvoreno_at', { ascending: false })
 
@@ -160,20 +169,11 @@ export async function nactiSouboryZarizeni(zarizeniId: string) {
   const radky = data ?? []
   if (radky.length === 0) return []
 
-  const { data: odkazy } = await supabase.storage
-    .from(NADOBA_SOUBORU)
-    .createSignedUrls(
-      radky.map((r) => r.cesta),
-      PLATNOST_ODKAZU_S,
-    )
-
-  const podleCesty = new Map((odkazy ?? []).map((o) => [o.path, o.signedUrl]))
+  const odkazy = await odkazyKeStazeni(radky.map((r) => r.cesta))
 
   return radky.map((radek) => ({
     ...radek,
-    // Když se odkaz nepodaří podepsat, soubor se v seznamu pořád ukáže - jen
-    // bez možnosti otevřít. Lepší než celá karta se zprávou o chybě.
-    odkaz: podleCesty.get(radek.cesta) ?? null,
+    odkaz: odkazy.get(radek.cesta) ?? null,
   }))
 }
 

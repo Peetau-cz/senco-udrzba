@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormularZarizeni } from '@/components/zarizeni/formular-zarizeni'
 import { maPravo } from '@/lib/auth/opravneni'
@@ -44,9 +45,7 @@ export default async function StrankaUpravaZarizeni({
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-1">
-        <Link href={`/zarizeni/${zarizeni.id}`} className="text-sm text-muted-foreground hover:underline">
-          ‹ {zarizeni.nazev}
-        </Link>
+        <OdkazZpet href={`/zarizeni/${zarizeni.id}`} popisek={zarizeni.nazev} />
         <h1 className="text-2xl font-semibold">Úprava zařízení</h1>
         <p className="text-muted-foreground">
           Každá změna se zapisuje do auditního logu (zadání ř. 157).
