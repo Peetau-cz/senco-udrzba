@@ -91,9 +91,9 @@ nezávisí na schématu `auth`, které na holém Postgresu neexistuje.
 
 Tohle je potřeba vědět dopředu, protože se to bude týkat modulu M1:
 
-- **Fotografie a návody.** Modul M1 je začne ukládat do Supabase Storage. Aby přesun
-  zůstal levný, budou přístupné přes vlastní rozhraní v `src/lib/storage/`, ne přímým
-  voláním Storage ze stránek.
+- **Fotografie a návody.** Modul M1 je ukládá do Supabase Storage. Aby přesun zůstal
+  levný, chodí se k nim přes vlastní rozhraní v `src/lib/storage/` — hotovo v M1, včetně
+  překladu chybových hlášek úložiště. Přímé volání Storage ze stránek nikde nezůstalo.
 - **Realtime.** Dashboard se má obnovovat bez načtení stránky. Na holém Postgresu by to
   znamenalo SSE nebo dotazování v intervalu.
 - **Plánovač.** `pg_cron` je rozšíření PostgreSQL, funguje i mimo Supabase — ale na

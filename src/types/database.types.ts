@@ -1,10 +1,11 @@
 /**
- * Typy databáze odpovídající migracím 0001_identita_a_opravneni.sql
- * a 0003_zarizeni.sql.
+ * Typy databáze odpovídající migracím 0001 až 0005 ze `supabase/migrations/`.
  *
  * Tento soubor se běžně GENERUJE příkazem `npm run db:types`. Než bude projekt
- * propojený se Supabase (`supabase link`), je napsaný ručně podle migrace, aby
- * šel projekt přeložit a typová kontrola měla o co se opřít.
+ * propojený se Supabase (`supabase link`), je napsaný ručně podle migrací, aby
+ * šel projekt přeložit a typová kontrola měla o co se opřít. Po každé nové
+ * migraci je proto potřeba doplnit tabulky, enumy a funkce sem taky — jinak
+ * typecheck spadne na `SelectQueryError`.
  *
  * Po propojení spusťte `npm run db:types` — generátor soubor přepíše. Pokud se
  * vygenerovaný obsah bude lišit od tohoto, je to signál, že migrace a kód se
