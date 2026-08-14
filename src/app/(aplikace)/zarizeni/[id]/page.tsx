@@ -1,5 +1,20 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
+import {
+  CalendarClock,
+  Cog,
+  Hash,
+  History,
+  MapPin,
+  Paperclip,
+  SlidersHorizontal,
+  Tag,
+  Upload,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { notFound, redirect } from 'next/navigation'
+import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { NahraniSouboru } from '@/components/zarizeni/nahrani-souboru'
@@ -79,24 +94,22 @@ export default async function KartaZarizeni({
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <Link href="/zarizeni" className="text-sm text-muted-foreground hover:underline">
-            ‹ Zařízení
-          </Link>
+          <OdkazZpet href="/zarizeni" popisek="Zařízení" />
           <h1 className="text-2xl font-semibold">{zarizeni.nazev}</h1>
-          <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            {zarizeni.inventarni_cislo ? (
-              <span className="cislice-tabulkove">inv. č. {zarizeni.inventarni_cislo}</span>
-            ) : (
-              <span>bez inventárního čísla</span>
-            )}
-            <span>·</span>
-            <span>{zarizeni.typ?.nazev ?? 'bez typu'}</span>
-            <span>·</span>
-            <span>{zarizeni.oblast?.nazev}</span>
-            <span>·</span>
-            <span>{cestaUmisteni(zarizeni.umisteni, 'umístění neurčeno')}</span>
+          {/* Dřív to byla šedá řádka oddělovaná tečkami - všechno stejně důležité
+              a nic nečitelné na první pohled. Štítky dají každému údaji vlastní
+              plochu a ikonu; barvu nesou jen ikony, aby text zůstal klidný. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Stitek ikona={Hash} cislice>
+              {zarizeni.inventarni_cislo
+                ? `inv. č. ${zarizeni.inventarni_cislo}`
+                : 'bez inventárního čísla'}
+            </Stitek>
+            <Stitek ikona={Cog}>{zarizeni.typ?.nazev ?? 'bez typu'}</Stitek>
+            {zarizeni.oblast?.nazev ? <Stitek ikona={Users}>{zarizeni.oblast.nazev}</Stitek> : null}
+            <Stitek ikona={MapPin}>{cestaUmisteni(zarizeni.umisteni, 'umístění neurčeno')}</Stitek>
             <ZnackaStavu stav={zarizeni.stav} />
-          </p>
+          </div>
         </div>
 
         {smiUpravovat ? (
@@ -116,8 +129,8 @@ export default async function KartaZarizeni({
               aria-current={jeAktivni ? 'page' : undefined}
               className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                 jeAktivni
-                  ? 'border-zvyrazneni text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  ? 'border-zvyrazneni text-zvyrazneni'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
               }`}
             >
               {z.popisek}
@@ -130,7 +143,10 @@ export default async function KartaZarizeni({
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Výrobní štítek</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Tag aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+                Výrobní štítek
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {fotka?.odkaz ? (
@@ -163,18 +179,27 @@ export default async function KartaZarizeni({
           </Card>
 
           <div className="space-y-4">
-            <Card>
+            {/* Proužky používají barvy stavů údržby, ne libovolné odstíny:
+                plán je fialový jako „dnešní plán", splněná údržba zelená.
+                Až sem M3 a M5 doplní čísla, barva už bude sedět. */}
+            <Card className="border-l-4 border-l-stav-dnes">
               <CardHeader className="pb-2">
-                <CardDescription>Nejbližší údržba</CardDescription>
+                <CardDescription className="flex items-center gap-2">
+                  <CalendarClock aria-hidden="true" className="h-4 w-4 text-stav-dnes" />
+                  Nejbližší údržba
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">Doplní modul M3.</p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-stav-splneno">
               <CardHeader className="pb-2">
-                <CardDescription>Poslední údržba</CardDescription>
+                <CardDescription className="flex items-center gap-2">
+                  <History aria-hidden="true" className="h-4 w-4 text-stav-splneno" />
+                  Poslední údržba
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">Doplní modul M5.</p>
@@ -194,7 +219,10 @@ export default async function KartaZarizeni({
       {zalozka === 'parametry' ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Vlastní technické parametry</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <SlidersHorizontal aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+              Vlastní technické parametry
+            </CardTitle>
             <CardDescription>
               Určuje je typ <strong>{zarizeni.typ?.nazev}</strong>, ne pevný seznam v kódu.
             </CardDescription>
@@ -231,7 +259,10 @@ export default async function KartaZarizeni({
           {smiUpravovat ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Nahrát soubor</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Upload aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+                  Nahrát soubor
+                </CardTitle>
                 <CardDescription>
                   Fotka stroje, návod k obsluze nebo certifikát. Soubory vidí každý, kdo vidí
                   zařízení; měnit je smí garant oblasti.
@@ -245,7 +276,10 @@ export default async function KartaZarizeni({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Přílohy</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Paperclip aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+                Přílohy
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <SeznamSouboru
@@ -262,7 +296,12 @@ export default async function KartaZarizeni({
       {zalozka === 'plan' || zalozka === 'historie' ? (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">
+            <CardTitle className="flex items-center gap-2 text-base">
+              {zalozka === 'plan' ? (
+                <CalendarClock aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+              ) : (
+                <History aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+              )}
               {ZALOZKY.find((z) => z.klic === zalozka)?.popisek}
             </CardTitle>
             <CardDescription>{POPIS_PRAZDNE[zalozka]}</CardDescription>
@@ -276,6 +315,33 @@ export default async function KartaZarizeni({
 const POPIS_PRAZDNE: Record<'plan' | 'historie', string> = {
   plan: 'Plán úkonů podle šablony doplní moduly M2 a M3.',
   historie: 'Provedené údržby a zápisy z deníku doplní moduly M3 a M5.',
+}
+
+/**
+ * Štítek s jedním údajem v hlavičce karty.
+ *
+ * Podklad je neutrální (`secondary`), barvu nese jen ikona - kdyby se barvily
+ * i plochy, hlavička by přebila odznak stavu, který barvou opravdu něco říká.
+ */
+function Stitek({
+  ikona: Ikona,
+  cislice = false,
+  children,
+}: {
+  ikona: LucideIcon
+  cislice?: boolean
+  children: ReactNode
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-xs text-secondary-foreground ${
+        cislice ? 'cislice-tabulkove' : ''
+      }`}
+    >
+      <Ikona aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-zvyrazneni" />
+      {children}
+    </span>
+  )
 }
 
 function Udaj({ popisek, hodnota }: { popisek: string; hodnota?: string | null }) {

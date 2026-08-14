@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
+import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormularTypu } from '@/components/zarizeni/formular-typu'
 import { maPravo } from '@/lib/auth/opravneni'
@@ -32,14 +33,13 @@ export default async function StrankaUpravaTypu({ params }: { params: Promise<{ 
       <Card className="max-w-lg">
         <CardHeader>
           <CardTitle>{typ.nazev}</CardTitle>
-          <CardDescription>
-            Typ spravuje garant oblasti {typ.oblast?.nazev ?? ''}.
-          </CardDescription>
+          <CardDescription>Typ spravuje garant oblasti {typ.oblast?.nazev ?? ''}.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>
-            Parametry tohoto typu: {Object.keys(schema).length === 0 ? 'žádné' : Object.keys(schema).length}. Strojů
-            v evidenci: {pocet}.
+            Parametry tohoto typu:{' '}
+            {Object.keys(schema).length === 0 ? 'žádné' : Object.keys(schema).length}. Strojů v
+            evidenci: {pocet}.
           </p>
           <Link href="/zarizeni/typy" className="mt-4 inline-block underline">
             Zpět na typy zařízení
@@ -52,9 +52,7 @@ export default async function StrankaUpravaTypu({ params }: { params: Promise<{ 
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-1">
-        <Link href="/zarizeni/typy" className="text-sm text-muted-foreground hover:underline">
-          ‹ Typy zařízení
-        </Link>
+        <OdkazZpet href="/zarizeni/typy" popisek="Typy zařízení" />
         <h1 className="text-2xl font-semibold">{typ.nazev}</h1>
         <p className="text-muted-foreground">
           {typ.oblast?.nazev} · {pocet} {pocet === 1 ? 'stroj' : 'strojů'} v evidenci

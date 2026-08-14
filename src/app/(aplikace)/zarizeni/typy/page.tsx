@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { maPravo } from '@/lib/auth/opravneni'
@@ -27,9 +28,7 @@ export default async function StrankaTypu() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/zarizeni" className="text-sm text-muted-foreground hover:underline">
-            ‹ Zařízení
-          </Link>
+          <OdkazZpet href="/zarizeni" popisek="Zařízení" />
           <h1 className="text-2xl font-semibold">Typy zařízení</h1>
           <p className="text-muted-foreground">
             Typ určuje oblast údržby a technické parametry, které se u strojů evidují.

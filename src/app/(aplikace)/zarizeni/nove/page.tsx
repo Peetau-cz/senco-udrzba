@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { FormularZarizeni } from '@/components/zarizeni/formular-zarizeni'
 import { maPravo } from '@/lib/auth/opravneni'
@@ -24,8 +25,8 @@ export default async function StrankaNoveZarizeni() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
           <p>
-            Vaše role eviduje údržbu, ale karty strojů nezakládá. Obraťte se na garanta své
-            oblasti nebo na vedoucího údržby.
+            Vaše role eviduje údržbu, ale karty strojů nezakládá. Obraťte se na garanta své oblasti
+            nebo na vedoucího údržby.
           </p>
           <Link href="/zarizeni" className="mt-4 inline-block underline">
             Zpět na seznam zařízení
@@ -40,9 +41,7 @@ export default async function StrankaNoveZarizeni() {
   return (
     <div className="max-w-3xl space-y-6">
       <div className="space-y-1">
-        <Link href="/zarizeni" className="text-sm text-muted-foreground hover:underline">
-          ‹ Zařízení
-        </Link>
+        <OdkazZpet href="/zarizeni" popisek="Zařízení" />
         <h1 className="text-2xl font-semibold">Nové zařízení</h1>
         <p className="text-muted-foreground">
           Povinný je název a typ. Zbytek se dá doplnit kdykoli později.
