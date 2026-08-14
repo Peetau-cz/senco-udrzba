@@ -116,12 +116,13 @@ Soubory se na sebe odkazují kódy, ne pořadovými čísly — proto lze vyplň
 | `popis` | ne | postup pro technika |
 | `interval_typ` | ano | `dny` / `tydny` / `mesice` / `roky` — **jen kalendářní** (P1) |
 | `interval_hodnota` | ano | celé číslo, např. `3` měsíce |
-| `interval_zaklad` | ne | `od_provedeni` (výchozí) nebo `od_planu` (P2) |
+| `interval_zaklad` | ne | `od_planu` (výchozí — termín k pevně danému datu) nebo `od_provedeni` (P2) |
 | `tolerance_dny` | ne | kolik dní po termínu se ještě počítá jako splněné |
 | `profese_role_kod` | ano | kdo úkon provádí |
-| `kontrolni_body` | ne | body oddělené svislítkem, např. `1000\|3000\|6000 ot.` |
+| `kontrolni_body` | ne | dílčí kroky uvnitř úkonu, oddělené svislítkem. Bod zakončený **otazníkem** technik jen odškrtne ano/ne, u ostatních zapíše naměřenou hodnotu v jednotce úkonu. Např. `1000 ot.\|3000 ot.\|Kryt dotažen?` |
 | `vyzaduje_foto` | ano | `ano` / `ne` |
 | `vyzaduje_hodnotu` | ano | `ano` / `ne` — technik zapíše naměřenou hodnotu |
+| `nabizi_poznamku` | ne | `ano` / `ne` — technik dostane pole, kde se může rozepsat |
 | `jednotka`, `mez_min`, `mez_max` | ne | pro měřené hodnoty, např. `l`, `3.5`, `5.0` |
 
 ### 8. `zarizeni_sablony.csv` — přiřazení šablon zařízením

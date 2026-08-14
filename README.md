@@ -48,6 +48,7 @@ npm run db:push
 #   supabase/seed.sql           oblasti a role
 #   supabase/seed_umisteni.sql  areál, haly a provozy
 #   supabase/seed_cnc.sql       typy a stroje CNC z docs/Harmonogram_udrzby_CNC_stroju.xlsx
+#   supabase/seed_sablony_cnc.sql  šablona údržby CNC z téhož souboru (až po migraci 0006)
 
 # Testovací uživatelé
 SEED_POTVRDIT_PROSTREDI=ano npm run seed:users
