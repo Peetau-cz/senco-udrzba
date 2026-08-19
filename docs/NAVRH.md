@@ -218,7 +218,7 @@ Obě jsou `SECURITY INVOKER`, takže RLS platí i skrz ně.
 ### 2.4 Plánování a provedení
 
 ```
-plan_udrzby (id, zarizeni_id, sablona_ukon_id, dalsi_termin,
+plan_udrzby (id, zarizeni_id, sablona_id, ukon_klic, dalsi_termin,
              posledni_provedeno_at, aktivni)
     ← živý stav plánovače, jeden řádek na kombinaci zařízení × úkon
     ▼  pg_cron zakládá
@@ -237,6 +237,23 @@ zakazka (id, zarizeni_id, sablona_verze_id, plan_udrzby_id,
 ```
 
 Typ údržby uživatel nevybírá — vyplývá z matice přiřazené zařízení (ř. 119–120 zadání).
+
+**Proč se plán neváže na `sablona_ukon_id`.** Původní návrh s tím počítal, při stavbě M3 se
+ale ukázalo, že to s verzováním z M2 nemůže fungovat: `zaloz_navrh_verze` matici *kopíruje*,
+takže každý úkon má v nové verzi nové `id`. Po vydání verze 2 by plán ukazoval na řádky
+verze 1 — plánovalo by se podle archivované matice, nebo by garant zadával termíny znovu
+od začátku. Chybí tedy odpověď na otázku, kterou samo verzování neřeší: *co dělá „týdenní
+kontrolu vřetena" ve verzi 3 týmž úkonem jako ve verzi 1.* Ani název (garant přejmenovává),
+ani pořadí (garant přeskládává). Úkon proto v migraci 0010 dostal stálý `klic`, který kopie
+do dalšího návrhu přenáší, a plán se váže na dvojici `(zarizeni_id, sablona_id)` a ten klíč.
+Vydání nové verze pak plán jen srovná: přibylé úkony doplní, vyřazené zneaktivní, zadané
+termíny nechá být.
+
+**Kdy vzniká první termín.** Nedopočítává se z data přiřazení ani ze společného data pro celý
+stroj — zadává ho garant u každého úkonu zvlášť (rozhodnutí z 19. 8. 2026). Proto je
+`dalsi_termin` nullable: řádek plánu vznikne přiřazením sám, ale dokud v něm termín není,
+plánovač ho přeskočí a garant ho vidí v seznamu k doplnění. Stejný mechanismus obslouží
+i úkon nově přidaný do matice.
 
 ### 2.5 Provozní deník a historie
 
