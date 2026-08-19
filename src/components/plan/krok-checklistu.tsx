@@ -320,6 +320,7 @@ function GalerieFotek({
               nazev="fotku"
               popisek="Smazat"
               otazka="Opravdu smazat tuhle fotku?"
+              vyrazne
             />
           ) : null}
         </li>
