@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
-import { smazSoubory, ulozSoubor } from '@/lib/storage'
+import { NADOBA_ZARIZENI, smazSoubory, ulozSoubor } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { cestaSouboru, jeDruhSouboru, overSoubor, zkratNazev } from '@/lib/zarizeni/soubory'
 
@@ -51,7 +51,7 @@ export async function nahrajSoubor(
 
   const cesta = cestaSouboru(zarizeniId, soubor.type, randomUUID())
 
-  const chybaUlozeni = await ulozSoubor(cesta, soubor, soubor.type)
+  const chybaUlozeni = await ulozSoubor(NADOBA_ZARIZENI, cesta, soubor, soubor.type)
   if (chybaUlozeni) return { chyba: chybaUlozeni }
 
   const { error: chybaZapisu } = await supabase.from('zarizeni_soubor').insert({
@@ -67,7 +67,7 @@ export async function nahrajSoubor(
   if (chybaZapisu) {
     // Bez řádku v databázi je soubor v úložišti neviditelný a nikdo ho už
     // nesmaže. Proto se úklid dělá hned, ne až někdy.
-    await smazSoubory([cesta])
+    await smazSoubory(NADOBA_ZARIZENI, [cesta])
     return { chyba: `Soubor se nepodařilo připojit ke kartě: ${chybaZapisu.message}` }
   }
 
@@ -92,7 +92,7 @@ export async function smazSoubor(zarizeniId: string, souborId: string): Promise<
 
   if (!soubor) return
 
-  if (await smazSoubory([soubor.cesta])) return
+  if (await smazSoubory(NADOBA_ZARIZENI, [soubor.cesta])) return
 
   await supabase.from('zarizeni_soubor').delete().eq('id', souborId)
 

@@ -1,5 +1,5 @@
 /**
- * Typy databáze odpovídající migracím 0001 až 0009 ze `supabase/migrations/`.
+ * Typy databáze odpovídající migracím 0001 až 0014 ze `supabase/migrations/`.
  *
  * Tento soubor se běžně GENERUJE příkazem `npm run db:types`. Než bude projekt
  * propojený se Supabase (`supabase link`), je napsaný ručně podle migrací, aby
@@ -513,6 +513,7 @@ export type Database = {
         Row: {
           id: string
           sablona_verze_id: string
+          klic: string
           poradi: number
           nazev: string
           popis: string | null
@@ -533,6 +534,7 @@ export type Database = {
         Insert: {
           id?: string
           sablona_verze_id: string
+          klic?: string
           poradi: number
           nazev: string
           popis?: string | null
@@ -553,6 +555,7 @@ export type Database = {
         Update: {
           id?: string
           sablona_verze_id?: string
+          klic?: string
           poradi?: number
           nazev?: string
           popis?: string | null
@@ -636,6 +639,276 @@ export type Database = {
           },
         ]
       }
+      plan_udrzby: {
+        Row: {
+          id: string
+          zarizeni_id: string
+          sablona_id: string
+          ukon_klic: string
+          /** Null = garant termín ještě nezadal, plánovač řádek přeskočí. */
+          dalsi_termin: string | null
+          posledni_provedeno_at: string | null
+          aktivni: boolean
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          zarizeni_id: string
+          sablona_id: string
+          ukon_klic: string
+          dalsi_termin?: string | null
+          posledni_provedeno_at?: string | null
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          zarizeni_id?: string
+          sablona_id?: string
+          ukon_klic?: string
+          dalsi_termin?: string | null
+          posledni_provedeno_at?: string | null
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'plan_udrzby_prirazeni_fk'
+            columns: ['zarizeni_id', 'sablona_id']
+            isOneToOne: false
+            referencedRelation: 'zarizeni_sablona'
+            referencedColumns: ['zarizeni_id', 'sablona_id']
+          },
+        ]
+      }
+      zakazka: {
+        Row: {
+          id: string
+          zarizeni_id: string
+          sablona_verze_id: string
+          profese_role_id: string
+          planovany_termin: string
+          stav: Database['public']['Enums']['stav_zakazky']
+          prirazeno_uzivateli_id: string | null
+          zahajeno_at: string | null
+          dokonceno_at: string | null
+          dokoncil_id: string | null
+          poznamka: string | null
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          zarizeni_id: string
+          sablona_verze_id: string
+          profese_role_id: string
+          planovany_termin: string
+          stav?: Database['public']['Enums']['stav_zakazky']
+          prirazeno_uzivateli_id?: string | null
+          zahajeno_at?: string | null
+          dokonceno_at?: string | null
+          dokoncil_id?: string | null
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          zarizeni_id?: string
+          sablona_verze_id?: string
+          profese_role_id?: string
+          planovany_termin?: string
+          stav?: Database['public']['Enums']['stav_zakazky']
+          prirazeno_uzivateli_id?: string | null
+          zahajeno_at?: string | null
+          dokonceno_at?: string | null
+          dokoncil_id?: string | null
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'zakazka_zarizeni_id_fkey'
+            columns: ['zarizeni_id']
+            isOneToOne: false
+            referencedRelation: 'zarizeni'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_sablona_verze_id_fkey'
+            columns: ['sablona_verze_id']
+            isOneToOne: false
+            referencedRelation: 'sablona_verze'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_profese_role_id_fkey'
+            columns: ['profese_role_id']
+            isOneToOne: false
+            referencedRelation: 'role'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_prirazeno_uzivateli_id_fkey'
+            columns: ['prirazeno_uzivateli_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_dokoncil_id_fkey'
+            columns: ['dokoncil_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      zakazka_ukon: {
+        Row: {
+          id: string
+          zakazka_id: string
+          plan_udrzby_id: string | null
+          sablona_ukon_id: string | null
+          poradi: number
+          nazev_snapshot: string
+          popis_snapshot: string | null
+          /** Zadání bodů i odpovědi technika v jednom poli, viz migrace 0011. */
+          kontrolni_body: Json
+          vyzaduje_foto: boolean
+          vyzaduje_hodnotu: boolean
+          nabizi_poznamku: boolean
+          jednotka_snapshot: string | null
+          mez_min_snapshot: number | null
+          mez_max_snapshot: number | null
+          stav: Database['public']['Enums']['stav_ukonu']
+          hodnota: number | null
+          poznamka: string | null
+          potvrzeno_at: string | null
+          potvrdil_id: string | null
+          vytvoreno_at: string
+        }
+        Insert: {
+          id?: string
+          zakazka_id: string
+          plan_udrzby_id?: string | null
+          sablona_ukon_id?: string | null
+          poradi: number
+          nazev_snapshot: string
+          popis_snapshot?: string | null
+          kontrolni_body?: Json
+          vyzaduje_foto?: boolean
+          vyzaduje_hodnotu?: boolean
+          nabizi_poznamku?: boolean
+          jednotka_snapshot?: string | null
+          mez_min_snapshot?: number | null
+          mez_max_snapshot?: number | null
+          stav?: Database['public']['Enums']['stav_ukonu']
+          hodnota?: number | null
+          poznamka?: string | null
+          potvrzeno_at?: string | null
+          potvrdil_id?: string | null
+          vytvoreno_at?: string
+        }
+        Update: {
+          id?: string
+          zakazka_id?: string
+          plan_udrzby_id?: string | null
+          sablona_ukon_id?: string | null
+          poradi?: number
+          nazev_snapshot?: string
+          popis_snapshot?: string | null
+          kontrolni_body?: Json
+          vyzaduje_foto?: boolean
+          vyzaduje_hodnotu?: boolean
+          nabizi_poznamku?: boolean
+          jednotka_snapshot?: string | null
+          mez_min_snapshot?: number | null
+          mez_max_snapshot?: number | null
+          stav?: Database['public']['Enums']['stav_ukonu']
+          hodnota?: number | null
+          poznamka?: string | null
+          potvrzeno_at?: string | null
+          potvrdil_id?: string | null
+          vytvoreno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'zakazka_ukon_zakazka_id_fkey'
+            columns: ['zakazka_id']
+            isOneToOne: false
+            referencedRelation: 'zakazka'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_ukon_plan_udrzby_id_fkey'
+            columns: ['plan_udrzby_id']
+            isOneToOne: false
+            referencedRelation: 'plan_udrzby'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_ukon_sablona_ukon_id_fkey'
+            columns: ['sablona_ukon_id']
+            isOneToOne: false
+            referencedRelation: 'sablona_ukon'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_ukon_potvrdil_id_fkey'
+            columns: ['potvrdil_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      zakazka_foto: {
+        Row: {
+          id: string
+          zakazka_ukon_id: string
+          storage_path: string
+          popis: string | null
+          nahral_id: string | null
+          vytvoreno_at: string
+        }
+        Insert: {
+          id?: string
+          zakazka_ukon_id: string
+          storage_path: string
+          popis?: string | null
+          nahral_id?: string | null
+          vytvoreno_at?: string
+        }
+        Update: {
+          id?: string
+          zakazka_ukon_id?: string
+          storage_path?: string
+          popis?: string | null
+          nahral_id?: string | null
+          vytvoreno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'zakazka_foto_zakazka_ukon_id_fkey'
+            columns: ['zakazka_ukon_id']
+            isOneToOne: false
+            referencedRelation: 'zakazka_ukon'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'zakazka_foto_nahral_id_fkey'
+            columns: ['nahral_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -681,6 +954,38 @@ export type Database = {
         Args: { p_verze_id: string }
         Returns: undefined
       }
+      srovnej_plan: {
+        Args: { p_zarizeni: string; p_sablona: string }
+        Returns: undefined
+      }
+      provadi_udrzbu_v_oblasti: {
+        Args: { p_oblast: string }
+        Returns: boolean
+      }
+      jsou_platne_odpovedi_bodu: {
+        Args: { p_body: Json }
+        Returns: boolean
+      }
+      zadani_kontrolnich_bodu: {
+        Args: { p_body: Json }
+        Returns: Json
+      }
+      dalsi_termin: {
+        Args: {
+          p_planovany: string
+          p_provedeno: string | null
+          p_typ: Database['public']['Enums']['interval_typ']
+          p_hodnota: number
+          p_zaklad: Database['public']['Enums']['interval_zaklad']
+        }
+        Returns: string
+      }
+      dokonci_zakazku: {
+        Args: { p_zakazka: string }
+        Returns: undefined
+      }
+      // zaloz_zakazky tu schválně není: právo EXECUTE nemá `authenticated`
+      // ani `anon` (migrace 0013), spouští ji noční úloha.
     }
     Enums: {
       vztah_k_oblasti: 'garant' | 'spolupracujici'
@@ -689,6 +994,8 @@ export type Database = {
       stav_verze: 'navrh' | 'aktivni' | 'archivovana'
       interval_typ: 'dny' | 'tydny' | 'mesice' | 'roky'
       interval_zaklad: 'od_provedeni' | 'od_planu'
+      stav_zakazky: 'naplanovano' | 'probiha' | 'dokonceno' | 'zruseno'
+      stav_ukonu: 'nesplneno' | 'splneno' | 'nelze_provest'
     }
     CompositeTypes: {
       [_ in never]: never

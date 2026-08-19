@@ -10,13 +10,14 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
-Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
-**M1 (evidence zařízení)** hotový a čeká na schválení: schéma, karty, formuláře,
-přílohy (fotky, návody, certifikáty), správa typů a jejich vlastních parametrů,
-strom umístění a filtrování seznamu po sloupcích.
+Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené — přihlášení,
+role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
+parametry, strom umístění.
+**M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
+**M3 (plán a provedení)** rozpracovaný — plán údržby na kartě zařízení, seznam
+zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
 Historie zařízení na kartě záměrně chybí — doplní ji M5.
-Import zařízení z CSV (rozhodnutí P6) se udělá až s M2, aby vznikl jedním
-průchodem i pro šablony.
+Import zařízení a šablon z CSV (rozhodnutí P6) přijde po M3.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---

@@ -17,14 +17,18 @@ import { notFound, redirect } from 'next/navigation'
 import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TerminyPlanu } from '@/components/plan/terminy-planu'
 import { NahraniSouboru } from '@/components/zarizeni/nahrani-souboru'
 import { SeznamSouboru } from '@/components/zarizeni/seznam-souboru'
 import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { formatDatumCas } from '@/lib/datum'
+import { nactiPlanZarizeni } from '@/lib/plan/dotazy'
+import { dnesVPraze } from '@/lib/plan/terminy'
 import { cestaUmisteni } from '@/lib/umisteni/zobrazeni'
 import { nactiSouboryZarizeni, nactiZarizeni } from '@/lib/zarizeni/dotazy'
+import { ulozTerminy } from './plan-actions'
 import { nahrajSoubor, smazSoubor } from './soubory-actions'
 import { popisekParametru, prectiSchema, zobrazHodnotu } from '@/lib/zarizeni/parametry'
 import type { HodnotyParametru } from '@/lib/zarizeni/parametry'
@@ -78,6 +82,10 @@ export default async function KartaZarizeni({
     : 'prehled'
 
   const smiUpravovat = maPravo(uzivatel.role, 'zarizeni', 'zapis')
+  // Plán má v matici oprávnění vlastní řádek. Dnes vychází stejně jako evidence,
+  // ale ptáme se na něj zvlášť - kdyby se pravidla rozešla, změní se matice
+  // a nikoli tahle stránka.
+  const smiPlanovat = maPravo(uzivatel.role, 'plan', 'zapis')
   const schema = prectiSchema(zarizeni.typ?.schema_parametru)
   const hodnoty = (zarizeni.parametry ?? {}) as HodnotyParametru
 
@@ -293,18 +301,18 @@ export default async function KartaZarizeni({
         </div>
       ) : null}
 
-      {zalozka === 'plan' || zalozka === 'historie' ? (
+      {zalozka === 'plan' ? <ZalozkaPlan zarizeniId={zarizeni.id} smiUpravovat={smiPlanovat} /> : null}
+
+      {zalozka === 'historie' ? (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              {zalozka === 'plan' ? (
-                <CalendarClock aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
-              ) : (
-                <History aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
-              )}
-              {ZALOZKY.find((z) => z.klic === zalozka)?.popisek}
+              <History aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+              Historie
             </CardTitle>
-            <CardDescription>{POPIS_PRAZDNE[zalozka]}</CardDescription>
+            <CardDescription>
+              Provedené údržby a zápisy z deníku doplní moduly M3 a M5.
+            </CardDescription>
           </CardHeader>
         </Card>
       ) : null}
@@ -312,9 +320,70 @@ export default async function KartaZarizeni({
   )
 }
 
-const POPIS_PRAZDNE: Record<'plan' | 'historie', string> = {
-  plan: 'Plán úkonů podle šablony doplní moduly M2 a M3.',
-  historie: 'Provedené údržby a zápisy z deníku doplní moduly M3 a M5.',
+// -----------------------------------------------------------------------------
+// Plán údržby
+// -----------------------------------------------------------------------------
+
+/**
+ * Co se na stroji má dělat a kdy.
+ *
+ * Řádky plánu zakládá databáze sama při přiřazení šablony a při vydání nové
+ * verze (migrace 0010). Prázdný plán proto neznamená „ještě se nenačetl", ale
+ * že stroj nemá přiřazenou šablonu s platnou verzí - a to je jediné, co s tím
+ * jde dělat.
+ */
+async function ZalozkaPlan({
+  zarizeniId,
+  smiUpravovat,
+}: {
+  zarizeniId: string
+  smiUpravovat: boolean
+}) {
+  const radky = await nactiPlanZarizeni(zarizeniId)
+
+  if (radky.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <CalendarClock aria-hidden="true" className="mx-auto mb-4 h-10 w-10 text-zvyrazneni/40" />
+          <p className="font-medium">Stroj zatím nemá co plánovat.</p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            Plán vznikne sám, jakmile stroj dostane šablonu údržby s aktivovanou verzí.{' '}
+            {smiUpravovat ? (
+              <Link href="/sablony" className="underline underline-offset-4">
+                Přiřadit šablonu
+              </Link>
+            ) : (
+              'Přiřazuje ji garant oblasti.'
+            )}
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <CalendarClock aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+          Plán údržby
+        </CardTitle>
+        <CardDescription>
+          Kdy se má který úkon dělat příště. První termín zadává garant u každého úkonu zvlášť —
+          nedopočítává se z data přiřazení, protože kalendář údržby si určuje provoz, ne systém.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <TerminyPlanu
+          radky={radky}
+          dnes={dnesVPraze()}
+          smiUpravovat={smiUpravovat}
+          akce={ulozTerminy.bind(null, zarizeniId)}
+        />
+      </CardContent>
+    </Card>
+  )
 }
 
 /**
