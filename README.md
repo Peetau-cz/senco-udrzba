@@ -14,10 +14,11 @@ Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené —
 role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
 parametry, strom umístění.
 **M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
-**M3 (plán a provedení)** rozpracovaný — plán údržby na kartě zařízení, seznam
+**M3 (plán a provedení)** hotový a schválený — plán údržby na kartě zařízení, seznam
 zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
 Historie zařízení na kartě záměrně chybí — doplní ji M5.
-Import zařízení a šablon z CSV (rozhodnutí P6) přijde po M3.
+Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
+přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
