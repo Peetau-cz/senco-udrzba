@@ -139,6 +139,10 @@ create table public.zakazka (
 
 -- Skupina zakázky: stroj + termín + profese. Zrušené se do ní nepočítají, aby
 -- šlo po zrušení naplánovat znovu.
+--
+-- POZOR: migrace 0013 tenhle index nahrazuje. Vylučovat jen zrušené nestačí -
+-- dokončená zakázka by klíč skupiny držela dál a úkon, kterému garant nastaví
+-- tentýž termín až potom, by neměl kam přijít. Důvod je celý rozepsaný tam.
 create unique index zakazka_skupina_unique
   on public.zakazka (zarizeni_id, planovany_termin, profese_role_id)
   where stav <> 'zruseno';

@@ -101,10 +101,23 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
-Ke schématu patří ještě tři skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
+Ke schématu patří ještě čtyři skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
 ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
-vydání nové verze šablony se zadanými termíny, a `supabase/tests/zakazky.sql` neměnnost
-uzavřené zakázky.
+vydání nové verze šablony se zadanými termíny, `supabase/tests/zakazky.sql` neměnnost
+uzavřené zakázky a `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače.
+
+## Noční plánovač
+
+Zakázky zakládá úloha `senco-udrzba-planovac` každý den ve 3:00 (migrace
+`0014_nocni_uloha_planovace.sql`). Potřebuje rozšíření **`pg_cron`** — na Supabase se zapíná
+v Dashboardu, *Database → Extensions*. Samotný plánovač na něm nezávisí: je to funkce
+`public.zaloz_zakazky()` a jde ji zavolat i ručně, takže bez `pg_cron` chybí jen spouštěč.
+
+| Dotaz | K čemu |
+|---|---|
+| `select * from cron.job;` | jaké úlohy jsou naplánované |
+| `select * from cron.job_run_details order by start_time desc limit 10;` | jak dopadly poslední běhy |
+| `select public.zaloz_zakazky();` | naplánovat hned, vrátí počet nových kroků |
 
 ## Přílohy karet zařízení
 

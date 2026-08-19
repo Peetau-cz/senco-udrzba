@@ -226,8 +226,8 @@ zakazka (id, zarizeni_id, sablona_verze_id, profese_role_id,
          planovany_termin, stav, prirazeno_uzivateli_id,
          zahajeno_at, dokonceno_at, dokoncil_id, poznamka)
     │   stav: naplanovano | probiha | dokonceno | zruseno
-    │   UNIQUE (zarizeni_id, planovany_termin, profese_role_id)
-    │          where stav <> 'zruseno'          ← skupina zakázky
+    │   UNIQUE (zarizeni_id, planovany_termin, profese_role_id, sablona_verze_id)
+    │          where stav in ('naplanovano','probiha')   ← skupina zakázky
     │
     └── zakazka_ukon (id, zakazka_id, plan_udrzby_id, sablona_ukon_id, poradi,
                       nazev_snapshot, popis_snapshot, kontrolni_body,
@@ -273,6 +273,26 @@ obejde papírem.
 nevzniká; jen se u ní počítá zpoždění (rozhodnutí z 19. 8. 2026). Jinak by se po měsíci
 zameškané týdenní údržby sešly čtyři zakázky za totéž a technik by odklikával i to, co už
 nemá smysl dělat pozpětku.
+
+**Skupina omezuje jen otevřené zakázky.** Původní index (migrace 0011) vylučoval pouze
+zrušené; při psaní plánovače se ukázalo, že to zadrhne. Dokončená zakázka by klíč skupiny
+držela dál, takže úkon, kterému garant nastaví tentýž termín až potom, by neměl kam přijít —
+do uzavřené zakázky ho přidat nelze a novou založit taky ne. Plánovač by ho tiše přeskakoval
+napořád. Hotové a zrušené zakázky proto skupinu neblokují; obojí je uzavřená kapitola.
+Do klíče přibyla `sablona_verze_id`, protože stroj může mít přiřazených víc šablon a zakázka
+nese verzi jedinou — bez toho by se úkony ze dvou matic slily do zakázky, která by o sobě
+tvrdila, že se dělá podle jedné z nich, a R3 by přestalo platit. Opraveno migrací 0013.
+
+**Zameškané cykly se přeskakují.** U `od_planu` nestačí přičíst jeden interval: týdenní úkon
+udělaný o tři týdny později by dostal termín v minulosti a byl by po termínu hned, jak ho
+technik odklikne. `dalsi_termin` proto posouvá mřížku po celých intervalech, dokud termín
+neminula skutečné provedení — kalendář zůstává na původních datech (1. 9., 8. 9., 15. 9. …)
+a zameškané cykly se nesčítají. Je to táž úvaha jako u rozhodnutí o zakázce po termínu.
+
+**Interval pro další termín se čte z platné verze, ne ze zamrazeného snapshotu.** Když garant
+mezi naplánováním a provedením změnil týdenní úkon na měsíční, další termín má vyjít podle
+toho nového — to je smysl toho, že se změna matice projeví sama. Snapshot slouží historii,
+ne dalšímu plánování.
 
 ### 2.5 Provozní deník a historie
 
