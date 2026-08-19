@@ -150,6 +150,12 @@ begin
 end;
 $$;
 
+-- `drop if exists` před vytvořením schválně. Zbytek tohohle souboru je psaný
+-- tak, aby šel pustit opakovaně - nádoba se upsertuje, politiky se nejdřív
+-- zahazují, funkce je `create or replace`. Samotné `create trigger` je jediné,
+-- co idempotentní není, a druhý běh migrace by na něm spadl s 42710.
+drop trigger if exists zakazka_foto_uklid on public.zakazka_foto;
+
 create trigger zakazka_foto_uklid
   after delete on public.zakazka_foto
   for each row execute function public.uklid_fotek_zakazky();

@@ -136,6 +136,13 @@ $$;
 comment on function public.uklid_parametru_po_zmene_schematu is
   'Po odebrání parametru ze schématu smaže jeho hodnoty ze zařízení daného typu.';
 
+-- `drop if exists` před vytvořením schválně. Zbytek tohohle souboru jsou jen
+-- `create or replace function`, tedy opakovaně spustitelné. Samotné
+-- `create trigger` idempotentní není a druhý běh migrace by na něm spadl
+-- s 42710 - přitom právě u těchhle souborů je opakované spuštění běžné,
+-- protože nic nezakládají a jen mění chování.
+drop trigger if exists typ_zarizeni_uklid_parametru on public.typ_zarizeni;
+
 create trigger typ_zarizeni_uklid_parametru
   after update of schema_parametru on public.typ_zarizeni
   for each row execute function public.uklid_parametru_po_zmene_schematu();
