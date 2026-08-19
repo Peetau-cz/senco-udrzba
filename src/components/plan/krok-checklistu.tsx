@@ -62,6 +62,7 @@ function TlacitkoFotka() {
  */
 export function KrokChecklistu({
   krok,
+  zakazkaId,
   cislo,
   otevreny,
   hotovaZakazka,
@@ -72,6 +73,16 @@ export function KrokChecklistu({
   smazFotkuAkce,
 }: {
   krok: KrokZakazky
+  /**
+   * Zakázka, do které krok patří.
+   *
+   * Předává se zvlášť, i když by šla navázat do akce už na serveru. Serverová
+   * akce svázaná na serveru a podruhé v klientovi ztratí odkaz na modul
+   * a volání skončí `__webpack_modules__[moduleId] is not a function`.
+   * Akce sem proto chodí nesvázané a oba parametry se navazují až tady -
+   * stejně jako u příloh zařízení v M1, kde to funguje.
+   */
+  zakazkaId: string
   /**
    * Pořadí v checklistu, číslované od jedné.
    *
@@ -88,7 +99,7 @@ export function KrokChecklistu({
   odkazOtevrit: string
   ulozAkce: Akce
   fotkaAkce: Akce
-  smazFotkuAkce: (fotkaId: string) => Promise<void>
+  smazFotkuAkce: (zakazkaId: string, fotkaId: string) => Promise<void>
 }) {
   const [stavUlozeni, ulozFormAction] = useActionState<StavKroku, FormData>(ulozAkce, {})
   const [stavFotky, fotkaFormAction] = useActionState<StavKroku, FormData>(fotkaAkce, {})
@@ -132,6 +143,7 @@ export function KrokChecklistu({
             <div className="mt-2">
               <GalerieFotek
                 krok={krok}
+                zakazkaId={zakazkaId}
                 smiMazat={smiZapisovat && !hotovaZakazka}
                 smazFotkuAkce={smazFotkuAkce}
               />
@@ -254,6 +266,7 @@ export function KrokChecklistu({
             {krok.fotky.length > 0 ? (
               <GalerieFotek
                 krok={krok}
+                zakazkaId={zakazkaId}
                 smiMazat={smiZapisovat && !hotovaZakazka}
                 smazFotkuAkce={smazFotkuAkce}
               />
@@ -310,12 +323,14 @@ export function KrokChecklistu({
  */
 function GalerieFotek({
   krok,
+  zakazkaId,
   smiMazat,
   smazFotkuAkce,
 }: {
   krok: KrokZakazky
+  zakazkaId: string
   smiMazat: boolean
-  smazFotkuAkce: (fotkaId: string) => Promise<void>
+  smazFotkuAkce: (zakazkaId: string, fotkaId: string) => Promise<void>
 }) {
   return (
     <ul className="flex flex-wrap gap-3">
@@ -338,7 +353,7 @@ function GalerieFotek({
 
           {smiMazat ? (
             <TlacitkoSmazat
-              akce={smazFotkuAkce.bind(null, f.id)}
+              akce={smazFotkuAkce.bind(null, zakazkaId, f.id)}
               nazev="fotku"
               popisek="Smazat"
               otazka="Opravdu smazat tuhle fotku?"
