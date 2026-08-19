@@ -222,6 +222,7 @@ async function ZalozkaMatice({
           akce={ulozMatici.bind(null, sablonaId, navrhId)}
           profese={profese}
           ukony={ukony.map((u) => ({
+            klic: u.klic,
             nazev: u.nazev,
             popis: u.popis ?? '',
             interval_typ: u.interval_typ,

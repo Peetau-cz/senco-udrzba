@@ -114,8 +114,20 @@ export function KrokChecklistu({
             </p>
           ) : null}
 
-          {vyrizeny && !otevreny ? (
-            <Souhrn krok={krok} body={body} />
+          {vyrizeny && !otevreny ? <Souhrn krok={krok} body={body} /> : null}
+
+          {/* Fotky se ukazují i u sbaleného kroku. Dřív byly vidět jen
+              v rozbaleném a ze souhrnu zbyl text „1 × foto" - kdo chtěl fotku
+              vyměnit, musel uhodnout, že se krok dá znovu otevřít přes Upravit.
+              Fotka je doklad o stavu stroje; má být vidět, ne schovaná. */}
+          {!otevreny && krok.fotky.length > 0 ? (
+            <div className="mt-2">
+              <GalerieFotek
+                krok={krok}
+                smiMazat={smiZapisovat && !hotovaZakazka}
+                smazFotkuAkce={smazFotkuAkce}
+              />
+            </div>
           ) : null}
 
           {chybiPovinnaFotka ? (
@@ -232,35 +244,11 @@ export function KrokChecklistu({
             </p>
 
             {krok.fotky.length > 0 ? (
-              <ul className="flex flex-wrap gap-3">
-                {krok.fotky.map((f) => (
-                  <li key={f.id} className="w-32 space-y-1">
-                    {f.odkaz ? (
-                      // Prosté <img>: odkaz je podepsaný a po hodině vyprší,
-                      // takže by ho optimalizátor stejně neuložil do cache.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={f.odkaz}
-                        alt={f.popis ?? `Fotka ke kroku ${krok.nazev_snapshot}`}
-                        className="h-24 w-32 rounded-md border object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-32 items-center justify-center rounded-md border text-xs text-muted-foreground">
-                        odkaz vypršel
-                      </div>
-                    )}
-
-                    {smiZapisovat && !hotovaZakazka ? (
-                      <TlacitkoSmazat
-                        akce={smazFotkuAkce.bind(null, f.id)}
-                        nazev="fotku"
-                        popisek="Smazat"
-                        otazka="Opravdu smazat tuhle fotku?"
-                      />
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <GalerieFotek
+                krok={krok}
+                smiMazat={smiZapisovat && !hotovaZakazka}
+                smazFotkuAkce={smazFotkuAkce}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">Zatím žádná fotka.</p>
             )}
@@ -293,6 +281,52 @@ export function KrokChecklistu({
 }
 
 // -----------------------------------------------------------------------------
+
+/**
+ * Náhledy fotek kroku. Používá se v rozbaleném i sbaleném kroku - fotka je
+ * doklad o stavu stroje a nemá mizet jen proto, že technik krok odklikl.
+ */
+function GalerieFotek({
+  krok,
+  smiMazat,
+  smazFotkuAkce,
+}: {
+  krok: KrokZakazky
+  smiMazat: boolean
+  smazFotkuAkce: (fotkaId: string) => Promise<void>
+}) {
+  return (
+    <ul className="flex flex-wrap gap-3">
+      {krok.fotky.map((f) => (
+        <li key={f.id} className="w-32 space-y-1">
+          {f.odkaz ? (
+            // Prosté <img>: odkaz je podepsaný a po hodině vyprší, takže by ho
+            // optimalizátor obrázků stejně neuložil do cache.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={f.odkaz}
+              alt={f.popis ?? `Fotka ke kroku ${krok.nazev_snapshot}`}
+              className="h-24 w-32 rounded-md border object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-32 items-center justify-center rounded-md border text-xs text-muted-foreground">
+              odkaz vypršel
+            </div>
+          )}
+
+          {smiMazat ? (
+            <TlacitkoSmazat
+              akce={smazFotkuAkce.bind(null, f.id)}
+              nazev="fotku"
+              popisek="Smazat"
+              otazka="Opravdu smazat tuhle fotku?"
+            />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function Ikona({ stav }: { stav: string }) {
   if (stav === 'splneno') {
@@ -330,9 +364,8 @@ function Souhrn({ krok, body }: { krok: KrokZakazky; body: VyplnenyBod[] }) {
     }
   }
 
-  if (krok.fotky.length > 0) {
-    casti.push(`${krok.fotky.length} × foto`)
-  }
+  // Počet fotek se sem nepíše - náhledy jsou hned pod souhrnem, takže by to
+  // bylo dvakrát totéž a to důležitější z toho by bylo to horší.
 
   return (
     <div className="mt-1 space-y-1 text-sm text-muted-foreground">

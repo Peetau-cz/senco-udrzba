@@ -184,20 +184,33 @@ export async function nahrajFotku(
   return { hotovo: 'Fotka nahrána.' }
 }
 
-/** Smaže fotku. Řádek i soubor - o soubor se navíc postará trigger z 0012. */
+/**
+ * Smaže fotku. Řádek i soubor - o soubor se navíc postará trigger z 0012.
+ *
+ * Chyby se vyhazují, nepolykají. Akce nemá kam vrátit stav (tlačítko mazání je
+ * sdílené s M1 a nic nečeká), takže tiché `return` by vypadalo přesně jako
+ * úspěch: stránka se načte a fotka tam je dál. Výjimka aspoň řekne proč -
+ * stejně jako u aktivace verze v M2.
+ */
 export async function smazFotku(zakazkaId: string, fotkaId: string): Promise<void> {
   const supabase = await vytvorServerovehoKlienta()
 
-  const { data: fotka } = await supabase
+  const { data: fotka, error: chybaCteni } = await supabase
     .from('zakazka_foto')
     .select('id, storage_path')
     .eq('id', fotkaId)
     .maybeSingle()
 
-  if (!fotka) return
+  if (chybaCteni) throw new Error(`Fotku se nepodařilo najít: ${chybaCteni.message}`)
+
+  // Smazaná mezitím někým jiným. Výsledek je stejný, jen se obnoví pohled.
+  if (!fotka) {
+    obnov(zakazkaId)
+    return
+  }
 
   const { error } = await supabase.from('zakazka_foto').delete().eq('id', fotkaId)
-  if (error) return
+  if (error) throw new Error(prelozChybuZapisu(error.message))
 
   await smazSoubory(NADOBA_ZAKAZEK, [fotka.storage_path])
   obnov(zakazkaId)
