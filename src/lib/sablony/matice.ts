@@ -20,6 +20,18 @@ import { ocistiBody, type KontrolniBod } from '@/lib/sablony/kontrolni-body'
 
 /** Co drží editor. Textová pole, protože přišla z formuláře. */
 export type RadekUkonu = {
+  /**
+   * Stálá identita úkonu napříč verzemi (migrace 0010). Editor ji nezobrazuje,
+   * jen ji veze s sebou tam a zpátky.
+   *
+   * Bez toho by ji uložení matice ztratilo: `ulozMatici` řádky maže a zakládá
+   * znovu, takže by každému úkonu databáze vygenerovala nový klíč. Plán stroje
+   * by se po vydání verze rozpadl - všechny úkony by vypadaly jako nové a
+   * čekaly na termín, ty původní by se označily za vyřazené z matice.
+   *
+   * Prázdný řetězec je nový úkon, kterému klíč teprve vznikne.
+   */
+  klic: string
   nazev: string
   popis: string
   interval_typ: string
@@ -39,6 +51,8 @@ export type RadekUkonu = {
 }
 
 export type UkonKUlozeni = {
+  /** Vynechané u nového úkonu - klíč mu vygeneruje databáze. */
+  klic?: string
   poradi: number
   nazev: string
   popis: string | null
@@ -58,6 +72,7 @@ export type UkonKUlozeni = {
 
 export function prazdnyRadek(): RadekUkonu {
   return {
+    klic: '',
     nazev: '',
     popis: '',
     interval_typ: 'mesice',
@@ -191,6 +206,9 @@ export function radkyNaUkony(radky: RadekUkonu[]): {
     const popis = radek.popis.trim()
 
     ukony.push({
+      // Klíč jde dál jen u úkonu, který ho už má. Novému ho vygeneruje
+      // databáze - posílat prázdný řetězec by neprošel typem uuid.
+      ...(radek.klic ? { klic: radek.klic } : {}),
       // Pořadí se přiděluje až tady, po zahození prázdných řádků - jinak by
       // v číslování vznikly díry a checklist by na ně narazil.
       poradi: ukony.length + 1,

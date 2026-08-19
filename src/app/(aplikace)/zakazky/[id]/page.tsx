@@ -170,6 +170,7 @@ export default async function StrankaZakazky({
               <KrokChecklistu
                 key={krok.id}
                 krok={krok}
+                zakazkaId={zakazka.id}
                 cislo={poradi + 1}
                 otevreny={krok.id === otevrenyKrok}
                 hotovaZakazka={!otevrena}
@@ -177,7 +178,9 @@ export default async function StrankaZakazky({
                 odkazOtevrit={`/zakazky/${zakazka.id}?krok=${krok.id}`}
                 ulozAkce={ulozKrok.bind(null, zakazka.id, krok.id)}
                 fotkaAkce={nahrajFotku.bind(null, zakazka.id, krok.id)}
-                smazFotkuAkce={smazFotku.bind(null, zakazka.id)}
+                // Nesvázaná schválně. Klient si ji sváže sám a dvojí svázání
+                // - na serveru i v klientovi - rozbije odkaz na modul.
+                smazFotkuAkce={smazFotku}
               />
             ))}
           </ul>

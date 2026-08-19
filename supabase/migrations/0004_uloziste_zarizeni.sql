@@ -101,6 +101,13 @@ create policy zarizeni_soubory_delete on storage.objects
   );
 
 -- -----------------------------------------------------------------------------
+-- POZOR: tenhle trigger migrace 0016 ruší.
+--
+-- Supabase nad storage.objects nedovolí přímé DML („Direct deletion from
+-- storage tables is not allowed"). Tady to nikdy nevyplavalo, protože se
+-- stroje nemažou, jen vyřazují stavem - první smazaný stroj by ale skončil
+-- chybou. Důvod celý rozepsaný v 0016.
+--
 -- Úklid po smazaném zařízení
 --
 -- Řádky v zarizeni_soubor mizí kaskádou, ale samotné soubory v úložišti by

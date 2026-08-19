@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Camera, Check, CircleAlert, CircleDashed } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -62,6 +62,7 @@ function TlacitkoFotka() {
  */
 export function KrokChecklistu({
   krok,
+  zakazkaId,
   cislo,
   otevreny,
   hotovaZakazka,
@@ -72,6 +73,16 @@ export function KrokChecklistu({
   smazFotkuAkce,
 }: {
   krok: KrokZakazky
+  /**
+   * Zakázka, do které krok patří.
+   *
+   * Předává se zvlášť, i když by šla navázat do akce už na serveru. Serverová
+   * akce svázaná na serveru a podruhé v klientovi ztratí odkaz na modul
+   * a volání skončí `__webpack_modules__[moduleId] is not a function`.
+   * Akce sem proto chodí nesvázané a oba parametry se navazují až tady -
+   * stejně jako u příloh zařízení v M1, kde to funguje.
+   */
+  zakazkaId: string
   /**
    * Pořadí v checklistu, číslované od jedné.
    *
@@ -88,10 +99,18 @@ export function KrokChecklistu({
   odkazOtevrit: string
   ulozAkce: Akce
   fotkaAkce: Akce
-  smazFotkuAkce: (fotkaId: string) => Promise<void>
+  smazFotkuAkce: (zakazkaId: string, fotkaId: string) => Promise<void>
 }) {
   const [stavUlozeni, ulozFormAction] = useActionState<StavKroku, FormData>(ulozAkce, {})
   const [stavFotky, fotkaFormAction] = useActionState<StavKroku, FormData>(fotkaAkce, {})
+  const formularFotky = useRef<HTMLFormElement>(null)
+
+  // Po nahrání vyprázdnit výběr, jinak by druhé vyfocení téhož souboru
+  // nespustilo onChange - hodnota pole by se nezměnila. Sleduje se celý stav,
+  // ne text hlášky: ta je u dvou fotek za sebou stejná.
+  useEffect(() => {
+    if (stavFotky.hotovo) formularFotky.current?.reset()
+  }, [stavFotky])
 
   const body = prectiVyplneneBody(krok.kontrolni_body)
   const vyrizeny = krok.stav !== 'nesplneno'
@@ -114,8 +133,21 @@ export function KrokChecklistu({
             </p>
           ) : null}
 
-          {vyrizeny && !otevreny ? (
-            <Souhrn krok={krok} body={body} />
+          {vyrizeny && !otevreny ? <Souhrn krok={krok} body={body} /> : null}
+
+          {/* Fotky se ukazují i u sbaleného kroku. Dřív byly vidět jen
+              v rozbaleném a ze souhrnu zbyl text „1 × foto" - kdo chtěl fotku
+              vyměnit, musel uhodnout, že se krok dá znovu otevřít přes Upravit.
+              Fotka je doklad o stavu stroje; má být vidět, ne schovaná. */}
+          {!otevreny && krok.fotky.length > 0 ? (
+            <div className="mt-2">
+              <GalerieFotek
+                krok={krok}
+                zakazkaId={zakazkaId}
+                smiMazat={smiZapisovat && !hotovaZakazka}
+                smazFotkuAkce={smazFotkuAkce}
+              />
+            </div>
           ) : null}
 
           {chybiPovinnaFotka ? (
@@ -232,47 +264,31 @@ export function KrokChecklistu({
             </p>
 
             {krok.fotky.length > 0 ? (
-              <ul className="flex flex-wrap gap-3">
-                {krok.fotky.map((f) => (
-                  <li key={f.id} className="w-32 space-y-1">
-                    {f.odkaz ? (
-                      // Prosté <img>: odkaz je podepsaný a po hodině vyprší,
-                      // takže by ho optimalizátor stejně neuložil do cache.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={f.odkaz}
-                        alt={f.popis ?? `Fotka ke kroku ${krok.nazev_snapshot}`}
-                        className="h-24 w-32 rounded-md border object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-32 items-center justify-center rounded-md border text-xs text-muted-foreground">
-                        odkaz vypršel
-                      </div>
-                    )}
-
-                    {smiZapisovat && !hotovaZakazka ? (
-                      <TlacitkoSmazat
-                        akce={smazFotkuAkce.bind(null, f.id)}
-                        nazev="fotku"
-                        popisek="Smazat"
-                        otazka="Opravdu smazat tuhle fotku?"
-                      />
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+              <GalerieFotek
+                krok={krok}
+                zakazkaId={zakazkaId}
+                smiMazat={smiZapisovat && !hotovaZakazka}
+                smazFotkuAkce={smazFotkuAkce}
+              />
             ) : (
               <p className="text-sm text-muted-foreground">Zatím žádná fotka.</p>
             )}
 
             {smiZapisovat && !hotovaZakazka ? (
-              <form action={fotkaFormAction} className="space-y-3">
+              <form ref={formularFotky} action={fotkaFormAction} className="space-y-3">
                 <input
                   type="file"
                   name="fotka"
                   accept={PRIJIMANE_PRIPONY_FOTEK}
                   capture="environment"
                   required
+                  // Nahraje se hned po vyfocení, bez druhého kliknutí. Dřív se
+                  // muselo potvrdit tlačítkem a kdo místo něj klepl na Potvrdit
+                  // krok, o fotku tiše přišel - stránka se překreslila a výběr
+                  // se zahodil. Technik u stroje má vyfotit a jít dál.
+                  onChange={(e) => {
+                    if (e.target.files?.length) e.target.form?.requestSubmit()
+                  }}
                   className="flex h-dotyk w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
 
@@ -282,7 +298,14 @@ export function KrokChecklistu({
                   </p>
                 ) : null}
 
+                {/* Tlačítko zůstává pro případ, že javascript neběží - pak se
+                    onChange nespustí a nahrání musí jít vyvolat ručně. */}
                 <TlacitkoFotka />
+
+                <p className="text-xs text-muted-foreground">
+                  Fotka se ukládá hned po vyfocení, nezávisle na ostatních krocích. Smazat ji jde,
+                  dokud je zakázka rozdělaná.
+                </p>
               </form>
             ) : null}
           </div>
@@ -293,6 +316,55 @@ export function KrokChecklistu({
 }
 
 // -----------------------------------------------------------------------------
+
+/**
+ * Náhledy fotek kroku. Používá se v rozbaleném i sbaleném kroku - fotka je
+ * doklad o stavu stroje a nemá mizet jen proto, že technik krok odklikl.
+ */
+function GalerieFotek({
+  krok,
+  zakazkaId,
+  smiMazat,
+  smazFotkuAkce,
+}: {
+  krok: KrokZakazky
+  zakazkaId: string
+  smiMazat: boolean
+  smazFotkuAkce: (zakazkaId: string, fotkaId: string) => Promise<void>
+}) {
+  return (
+    <ul className="flex flex-wrap gap-3">
+      {krok.fotky.map((f) => (
+        <li key={f.id} className="w-32 space-y-1">
+          {f.odkaz ? (
+            // Prosté <img>: odkaz je podepsaný a po hodině vyprší, takže by ho
+            // optimalizátor obrázků stejně neuložil do cache.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={f.odkaz}
+              alt={f.popis ?? `Fotka ke kroku ${krok.nazev_snapshot}`}
+              className="h-24 w-32 rounded-md border object-cover"
+            />
+          ) : (
+            <div className="flex h-24 w-32 items-center justify-center rounded-md border text-xs text-muted-foreground">
+              odkaz vypršel
+            </div>
+          )}
+
+          {smiMazat ? (
+            <TlacitkoSmazat
+              akce={smazFotkuAkce.bind(null, zakazkaId, f.id)}
+              nazev="fotku"
+              popisek="Smazat"
+              otazka="Opravdu smazat tuhle fotku?"
+              vyrazne
+            />
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 function Ikona({ stav }: { stav: string }) {
   if (stav === 'splneno') {
@@ -330,9 +402,8 @@ function Souhrn({ krok, body }: { krok: KrokZakazky; body: VyplnenyBod[] }) {
     }
   }
 
-  if (krok.fotky.length > 0) {
-    casti.push(`${krok.fotky.length} × foto`)
-  }
+  // Počet fotek se sem nepíše - náhledy jsou hned pod souhrnem, takže by to
+  // bylo dvakrát totéž a to důležitější z toho by bylo to horší.
 
   return (
     <div className="mt-1 space-y-1 text-sm text-muted-foreground">

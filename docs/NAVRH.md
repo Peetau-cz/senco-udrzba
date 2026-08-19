@@ -625,6 +625,13 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti, notifikace | provozní připravenost |
 | **M7** Dílna | QR štítky, ladění pro tablet, tisk protokolů | nasazení do provozu |
 
+**Až po M7** (rozhodnutí uživatele z 19. 8. 2026):
+
+| Krok | Obsah | Proč až nakonec |
+|---|---|---|
+| Import z CSV | hromadné nahrání zařízení a šablon (rozhodnutí P6) | Odkládal se dvakrát — nejdřív za M2, pak za M3, aby vznikl jedním průchodem pro obojí. Teď už obojí existuje, ale ruční zadání pěti strojů je rychlejší než čekat na importér. Ten se vyplatí až u zbytku podniku. |
+| Naplnění reálnými daty | inventární čísla, výrobci, modely, definice parametrů od garantů (`docs/PRIPRAVA_DAT.md`) | Nebrzdí kód a nemá smysl to dělat dvakrát. Data se nasypou až nad hotovým systémem, ideálně už importérem. |
+
 Rozšíření mimo rozsah zadání, se kterými model počítá, ale neimplementují se teď:
 náhradní díly a sklad, evidence prostojů (MTBF/MTTR), schvalování údržby druhou osobou,
 offline režim pro halu se slabým signálem.

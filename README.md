@@ -14,10 +14,11 @@ Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené —
 role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
 parametry, strom umístění.
 **M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
-**M3 (plán a provedení)** rozpracovaný — plán údržby na kartě zařízení, seznam
+**M3 (plán a provedení)** hotový a schválený — plán údržby na kartě zařízení, seznam
 zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
 Historie zařízení na kartě záměrně chybí — doplní ji M5.
-Import zařízení a šablon z CSV (rozhodnutí P6) přijde po M3.
+Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
+přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -143,6 +144,12 @@ a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodes
 Nahrávání, mazání i podepisování odkazů obstarává `src/lib/storage/` — jediné místo,
 které o Supabase Storage ví. Pravidla pro soubory (velikost, typy, cesta) jsou vedle
 v `src/lib/zarizeni/soubory.ts` a jsou schválně bez závislostí, aby se daly testovat.
+
+**Soubory z úložiště maže aplikace, ne databáze.** Supabase nad `storage.objects` nedovolí
+přímé DML, takže úklidový trigger by soubor nesmazal a navíc by shodil celou operaci —
+migrace `0016` proto ty triggery ruší. Mazání jde vždycky přes `src/lib/storage/` a **nejdřív
+soubor, pak řádek**: obráceně by selhání úložiště nechalo soubor bez záznamu, o kterém by se
+nikdo nedozvěděl.
 
 Fotodokumentace údržby má **vlastní** nádobu `zakazky` z migrace `0012_uloziste_zakazek.sql`.
 Přijímá jen JPG, PNG a WEBP — tedy formáty, které prohlížeč umí zobrazit; HEIC z iPadu

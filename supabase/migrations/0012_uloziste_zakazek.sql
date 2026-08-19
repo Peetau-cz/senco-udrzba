@@ -120,6 +120,13 @@ create policy zakazky_fotky_delete on storage.objects
   );
 
 -- -----------------------------------------------------------------------------
+-- POZOR: tenhle trigger migrace 0016 ruší.
+--
+-- Supabase nad storage.objects nedovolí přímé DML („Direct deletion from
+-- storage tables is not allowed"), takže trigger soubor neuklidil a navíc
+-- shodil mazání řádku. Úklid dělá aplikace přes Storage API. Důvod celý
+-- rozepsaný v 0016.
+--
 -- Úklid po smazané fotce
 --
 -- Zakázka se smazat nedá a zařízení pod ní drží `on delete restrict`, takže

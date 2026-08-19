@@ -55,6 +55,33 @@ describe('řádky matice na úkony', () => {
   })
 })
 
+describe('stálý klíč úkonu', () => {
+  const KLIC = '22222222-2222-4222-8222-222222222222'
+
+  it('projde beze změny, aby plán stroje přežil vydání verze', () => {
+    const { ukony } = radkyNaUkony([radek({ klic: KLIC })])
+    expect(ukony[0]?.klic).toBe(KLIC)
+  })
+
+  it('novému úkonu se neposílá vůbec, klíč mu vyrobí databáze', () => {
+    const { ukony } = radkyNaUkony([radek()])
+    expect(ukony[0]).not.toHaveProperty('klic')
+  })
+
+  it('přeskládání řádků klíče nepřehodí', () => {
+    const druhy = '33333333-3333-4333-8333-333333333333'
+    const { ukony } = radkyNaUkony([
+      radek({ klic: druhy, nazev: 'Druhý' }),
+      radek({ klic: KLIC, nazev: 'První' }),
+    ])
+
+    expect(ukony.map((u) => [u.poradi, u.klic])).toEqual([
+      [1, druhy],
+      [2, KLIC],
+    ])
+  })
+})
+
 describe('měřené hodnoty', () => {
   it('měření bez jednotky neprojde', () => {
     const { chyby } = radkyNaUkony([radek({ vyzaduje_hodnotu: true, jednotka: '' })])

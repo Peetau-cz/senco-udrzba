@@ -272,6 +272,9 @@ function prectiRadky(formData: FormData): RadekUkonu[] | null {
     if (!Array.isArray(rozebrane)) return null
 
     return rozebrane.map((r) => ({
+      // Stálý klíč úkonu. Přijde z editoru zpátky beze změny, u nového řádku
+      // je prázdný - viz RadekUkonu v matice.ts.
+      klic: text(r?.klic),
       nazev: text(r?.nazev),
       popis: text(r?.popis),
       interval_typ: text(r?.interval_typ),

@@ -17,7 +17,7 @@ const SLOUPCE_SEZNAMU = `
 ` as const
 
 const SLOUPCE_UKONU = `
-  id, poradi, nazev, popis, interval_typ, interval_hodnota, interval_zaklad,
+  id, klic, poradi, nazev, popis, interval_typ, interval_hodnota, interval_zaklad,
   tolerance_dny, kontrolni_body, vyzaduje_foto, vyzaduje_hodnotu, nabizi_poznamku,
   jednotka, mez_min, mez_max,
   profese:profese_role_id (id, kod, nazev)
