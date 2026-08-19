@@ -120,6 +120,11 @@ Nahrávání, mazání i podepisování odkazů obstarává `src/lib/storage/` �
 které o Supabase Storage ví. Pravidla pro soubory (velikost, typy, cesta) jsou vedle
 v `src/lib/zarizeni/soubory.ts` a jsou schválně bez závislostí, aby se daly testovat.
 
+Fotodokumentace údržby má **vlastní** nádobu `zakazky` z migrace `0012_uloziste_zakazek.sql`.
+Přijímá jen JPG, PNG a WEBP — tedy formáty, které prohlížeč umí zobrazit; HEIC z iPadu
+Safari při odeslání přes formulářové pole sám převádí na JPEG. Nahrávat jde jen k otevřené
+zakázce, po jejím uzavření to zarazí politika úložiště i trigger nad `zakazka_foto`.
+
 ## Zásady, které platí napříč kódem
 
 1. **Oprávnění vynucuje databáze, ne aplikace.** Row Level Security je bezpečnostní
