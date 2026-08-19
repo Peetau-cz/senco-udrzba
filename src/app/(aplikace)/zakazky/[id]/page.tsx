@@ -166,10 +166,11 @@ export default async function StrankaZakazky({
           </CardContent>
         ) : (
           <ul>
-            {kroky.map((krok) => (
+            {kroky.map((krok, poradi) => (
               <KrokChecklistu
                 key={krok.id}
                 krok={krok}
+                cislo={poradi + 1}
                 otevreny={krok.id === otevrenyKrok}
                 hotovaZakazka={!otevrena}
                 smiZapisovat={smiZapisovat}

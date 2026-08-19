@@ -62,6 +62,7 @@ function TlacitkoFotka() {
  */
 export function KrokChecklistu({
   krok,
+  cislo,
   otevreny,
   hotovaZakazka,
   smiZapisovat,
@@ -71,6 +72,16 @@ export function KrokChecklistu({
   smazFotkuAkce,
 }: {
   krok: KrokZakazky
+  /**
+   * Pořadí v checklistu, číslované od jedné.
+   *
+   * Schválně ne `krok.poradi` - ten nese pozici úkonu v matici a v zakázce
+   * bývá děravý: naplánuje se jen to, co je splatné, takže z šestnácti úkonů
+   * můžou přijít třeba jen 2., 3. a 4. Technik pak čte „krok 2" jako první
+   * a hledá, kde je jednička. Pořadí matice zůstává v datech a řadí se podle
+   * něj; číslo na obrazovce je věc zobrazení.
+   */
+  cislo: number
   otevreny: boolean
   hotovaZakazka: boolean
   smiZapisovat: boolean
@@ -93,7 +104,7 @@ export function KrokChecklistu({
 
         <div className="min-w-0 flex-1">
           <p className="font-medium">
-            <span className="cislice-tabulkove text-muted-foreground">{krok.poradi}. </span>
+            <span className="cislice-tabulkove text-muted-foreground">{cislo}. </span>
             {krok.nazev_snapshot}
           </p>
 
