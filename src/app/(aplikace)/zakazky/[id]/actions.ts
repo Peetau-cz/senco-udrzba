@@ -185,12 +185,16 @@ export async function nahrajFotku(
 }
 
 /**
- * Smaže fotku. Řádek i soubor - o soubor se navíc postará trigger z 0012.
+ * Smaže fotku ke kroku.
  *
- * Chyby se vyhazují, nepolykají. Akce nemá kam vrátit stav (tlačítko mazání je
- * sdílené s M1 a nic nečeká), takže tiché `return` by vypadalo přesně jako
- * úspěch: stránka se načte a fotka tam je dál. Výjimka aspoň řekne proč -
- * stejně jako u aktivace verze v M2.
+ * Pořadí je stejné jako u příloh zařízení v M1: nejdřív soubor, pak řádek.
+ * Obráceně by se to pralo s triggerem `zakazka_foto_uklid` z migrace 0012,
+ * který soubor maže hned po zmizení řádku - druhé mazání téhož klíče by pak
+ * mířilo na něco, co už neexistuje.
+ *
+ * Selhání úložiště zastaví celou akci a řádek zůstane. Osiřelý soubor bez
+ * záznamu je horší než fotka, kterou se nepovedlo smazat: záznam je aspoň
+ * vidět a jde zkusit znovu.
  */
 export async function smazFotku(zakazkaId: string, fotkaId: string): Promise<void> {
   const supabase = await vytvorServerovehoKlienta()
@@ -209,10 +213,12 @@ export async function smazFotku(zakazkaId: string, fotkaId: string): Promise<voi
     return
   }
 
+  const chybaUloziste = await smazSoubory(NADOBA_ZAKAZEK, [fotka.storage_path])
+  if (chybaUloziste) throw new Error(chybaUloziste)
+
   const { error } = await supabase.from('zakazka_foto').delete().eq('id', fotkaId)
   if (error) throw new Error(prelozChybuZapisu(error.message))
 
-  await smazSoubory(NADOBA_ZAKAZEK, [fotka.storage_path])
   obnov(zakazkaId)
 }
 
