@@ -145,6 +145,12 @@ Nahrávání, mazání i podepisování odkazů obstarává `src/lib/storage/` �
 které o Supabase Storage ví. Pravidla pro soubory (velikost, typy, cesta) jsou vedle
 v `src/lib/zarizeni/soubory.ts` a jsou schválně bez závislostí, aby se daly testovat.
 
+**Soubory z úložiště maže aplikace, ne databáze.** Supabase nad `storage.objects` nedovolí
+přímé DML, takže úklidový trigger by soubor nesmazal a navíc by shodil celou operaci —
+migrace `0016` proto ty triggery ruší. Mazání jde vždycky přes `src/lib/storage/` a **nejdřív
+soubor, pak řádek**: obráceně by selhání úložiště nechalo soubor bez záznamu, o kterém by se
+nikdo nedozvěděl.
+
 Fotodokumentace údržby má **vlastní** nádobu `zakazky` z migrace `0012_uloziste_zakazek.sql`.
 Přijímá jen JPG, PNG a WEBP — tedy formáty, které prohlížeč umí zobrazit; HEIC z iPadu
 Safari při odeslání přes formulářové pole sám převádí na JPEG. Nahrávat jde jen k otevřené
