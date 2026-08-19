@@ -103,10 +103,29 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
-Ke schématu patří ještě čtyři skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
+Ke schématu patří ještě pět skriptů, které se pouštějí stejně: `supabase/tests/sablony.sql`
 ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
 vydání nové verze šablony se zadanými termíny, `supabase/tests/zakazky.sql` neměnnost
-uzavřené zakázky a `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače.
+uzavřené zakázky, `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače
+a `supabase/tests/plneni.sql` definici, podle které se počítá plnění matice.
+
+## Jak se počítá plnění matice
+
+Definice není v zadání ani v návrhu — padla rozhodnutím při stavbě M4 a jediné místo, kde je
+ověřená proti datům, je `supabase/tests/plneni.sql`.
+
+| Pravidlo | Proč |
+|---|---|
+| Bez tolerance — po termínu je po termínu | Sloupec `tolerance_dny` zůstává a výpočet ho respektuje, ale je všude nula. |
+| „Nelze provést" se vyřadí úplně | Ani do čitatele, ani do jmenovatele; vykazuje se vedle. Jinak by stroj měsíc v opravě srazil plnění oblasti na polovinu. |
+| Období podle plánovaného termínu | Úkon plánovaný na 31. 8. a udělaný 2. 9. patří do srpna. |
+| Jen to, co už bylo splatné | Jinak by 1. v měsíci vždycky ukazoval 0 % a číslo za probíhající měsíc by klesalo pokaždé, když proběhne plánovač. |
+| Počítá se po krocích, ne po zakázkách | Zakázka o šesti úkonech by jinak vážila stejně jako zakázka o jednom. |
+
+Počítá se v databázi (pohledy `v_plneni_matice`, `v_dnesni_plan`, `v_po_terminu`), aby
+dashboard, obrazovka plnění i export do XLSX ukázaly totéž číslo. Všechny tři pohledy mají
+`security_invoker = true` — bez toho by se politiky vyhodnocovaly jménem vlastníka pohledu
+a kdokoli přihlášený by přes ně viděl celý podnik.
 
 ## Noční plánovač
 
