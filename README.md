@@ -101,9 +101,10 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
-Ke schématu patří ještě dva skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
-ověřuje neměnnost aktivované verze a `supabase/tests/plan.sql` to, že plán údržby přežije
-vydání nové verze šablony se zadanými termíny.
+Ke schématu patří ještě tři skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
+ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
+vydání nové verze šablony se zadanými termíny, a `supabase/tests/zakazky.sql` neměnnost
+uzavřené zakázky.
 
 ## Přílohy karet zařízení
 

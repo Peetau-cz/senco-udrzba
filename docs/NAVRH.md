@@ -222,14 +222,17 @@ plan_udrzby (id, zarizeni_id, sablona_id, ukon_klic, dalsi_termin,
              posledni_provedeno_at, aktivni)
     ← živý stav plánovače, jeden řádek na kombinaci zařízení × úkon
     ▼  pg_cron zakládá
-zakazka (id, zarizeni_id, sablona_verze_id, plan_udrzby_id,
+zakazka (id, zarizeni_id, sablona_verze_id, profese_role_id,
          planovany_termin, stav, prirazeno_uzivateli_id,
          zahajeno_at, dokonceno_at, dokoncil_id, poznamka)
     │   stav: naplanovano | probiha | dokonceno | zruseno
-    │   UNIQUE (plan_udrzby_id, planovany_termin)  ← idempotence plánovače
+    │   UNIQUE (zarizeni_id, planovany_termin, profese_role_id)
+    │          where stav <> 'zruseno'          ← skupina zakázky
     │
-    └── zakazka_ukon (id, zakazka_id, sablona_ukon_id, poradi,
-                      nazev_snapshot, popis_snapshot, kontrolni_body_snapshot,
+    └── zakazka_ukon (id, zakazka_id, plan_udrzby_id, sablona_ukon_id, poradi,
+                      nazev_snapshot, popis_snapshot, kontrolni_body,
+                      vyzaduje_foto, vyzaduje_hodnotu, nabizi_poznamku,
+                      jednotka_snapshot, mez_min_snapshot, mez_max_snapshot,
                       stav, hodnota, poznamka, potvrzeno_at, potvrdil_id)
             │   stav: nesplneno | splneno | nelze_provest
             │   ← materializovaný checklist, viz R3
@@ -254,6 +257,22 @@ stroj — zadává ho garant u každého úkonu zvlášť (rozhodnutí z 19. 8. 
 `dalsi_termin` nullable: řádek plánu vznikne přiřazením sám, ale dokud v něm termín není,
 plánovač ho přeskočí a garant ho vidí v seznamu k doplnění. Stejný mechanismus obslouží
 i úkon nově přidaný do matice.
+
+**Co slučuje úkony do jedné zakázky.** Návrh měl na zakázce zároveň `plan_udrzby_id` (tedy
+jeden úkon) i seznam `zakazka_ukon` (tedy víc úkonů). To si odporuje a wireframe 5.3
+rozhoduje ve prospěch druhého: kroky checklistu mají vlastní kontrolní body, takže krok *je*
+úkon z matice a vazba na plán patří na krok. Skupinu tvoří **stroj + termín + profese**
+(rozhodnutí z 19. 8. 2026) — jedna zakázka je jedna cesta technika ke stroji. Bez profese by
+u CNC matice spadly dvě revize elektro do checklistu údržbáře CNC, který na ně nemá
+kvalifikaci; se stejným datem tak vzniknou dvě zakázky, každá pro svou profesi. Databáze se
+na profesi *neptá* při zápisu: kdo zakázku odklikne, omezuje jen oblast. Profese říká, komu
+se zakázka nabízí, ne kdo jediný smí — vynucená by vedla k tomu, že zaskočená směna systém
+obejde papírem.
+
+**Úkon po termínu nezakládá zakázku každý cyklus znovu.** Dokud stávající není hotová, další
+nevzniká; jen se u ní počítá zpoždění (rozhodnutí z 19. 8. 2026). Jinak by se po měsíci
+zameškané týdenní údržby sešly čtyři zakázky za totéž a technik by odklikával i to, co už
+nemá smysl dělat pozpětku.
 
 ### 2.5 Provozní deník a historie
 
