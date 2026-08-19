@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Camera, Check, CircleAlert, CircleDashed } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -92,6 +92,14 @@ export function KrokChecklistu({
 }) {
   const [stavUlozeni, ulozFormAction] = useActionState<StavKroku, FormData>(ulozAkce, {})
   const [stavFotky, fotkaFormAction] = useActionState<StavKroku, FormData>(fotkaAkce, {})
+  const formularFotky = useRef<HTMLFormElement>(null)
+
+  // Po nahrání vyprázdnit výběr, jinak by druhé vyfocení téhož souboru
+  // nespustilo onChange - hodnota pole by se nezměnila. Sleduje se celý stav,
+  // ne text hlášky: ta je u dvou fotek za sebou stejná.
+  useEffect(() => {
+    if (stavFotky.hotovo) formularFotky.current?.reset()
+  }, [stavFotky])
 
   const body = prectiVyplneneBody(krok.kontrolni_body)
   const vyrizeny = krok.stav !== 'nesplneno'
@@ -254,13 +262,20 @@ export function KrokChecklistu({
             )}
 
             {smiZapisovat && !hotovaZakazka ? (
-              <form action={fotkaFormAction} className="space-y-3">
+              <form ref={formularFotky} action={fotkaFormAction} className="space-y-3">
                 <input
                   type="file"
                   name="fotka"
                   accept={PRIJIMANE_PRIPONY_FOTEK}
                   capture="environment"
                   required
+                  // Nahraje se hned po vyfocení, bez druhého kliknutí. Dřív se
+                  // muselo potvrdit tlačítkem a kdo místo něj klepl na Potvrdit
+                  // krok, o fotku tiše přišel - stránka se překreslila a výběr
+                  // se zahodil. Technik u stroje má vyfotit a jít dál.
+                  onChange={(e) => {
+                    if (e.target.files?.length) e.target.form?.requestSubmit()
+                  }}
                   className="flex h-dotyk w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
 
@@ -270,7 +285,14 @@ export function KrokChecklistu({
                   </p>
                 ) : null}
 
+                {/* Tlačítko zůstává pro případ, že javascript neběží - pak se
+                    onChange nespustí a nahrání musí jít vyvolat ručně. */}
                 <TlacitkoFotka />
+
+                <p className="text-xs text-muted-foreground">
+                  Fotka se ukládá hned po vyfocení, nezávisle na ostatních krocích. Smazat ji jde,
+                  dokud je zakázka rozdělaná.
+                </p>
               </form>
             ) : null}
           </div>
