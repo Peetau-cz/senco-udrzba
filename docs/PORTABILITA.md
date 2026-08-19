@@ -57,10 +57,15 @@ existujících uživatelů a hesel je ta nejnepříjemnější část.
 | Soubor | Obsah | Závislost na Supabase |
 |---|---|---|
 | `supabase/migrations/0001_identita_a_opravneni.sql` | tabulky, výčty, RLS politiky, audit, pomocné funkce | **žádná** — čistý PostgreSQL |
-| `supabase/migrations/0002_napojeni_na_supabase_auth.sql` | napojení identity, zakládání profilu | jediný závislý soubor |
+| `0003`, `0005`–`0011` | zařízení, šablony, plán, zakázky | **žádná** — čistý PostgreSQL |
+| `supabase/migrations/0002_napojeni_na_supabase_auth.sql` | napojení identity, zakládání profilu | závislý |
+| `supabase/migrations/0004_uloziste_zarizeni.sql` | nádoba na fotky a návody ke strojům | závislý |
+| `supabase/migrations/0012_uloziste_zakazek.sql` | nádoba na fotodokumentaci údržby | závislý |
 
 Migrace 0001 se nasadí i na holý PostgreSQL server. Sama si vytvoří role `anon`
-a `authenticated`, pokud tam ještě nejsou.
+a `authenticated`, pokud tam ještě nejsou. Závislé soubory jsou tři a všechny
+tři jsou adaptéry — dva na úložiště, jeden na přihlašování. Doménové tabulky
+mezi nimi nejsou žádné.
 
 ### Šev: funkce `public.aktualni_uzivatel()`
 
@@ -89,11 +94,12 @@ nezávisí na schématu `auth`, které na holém Postgresu neexistuje.
 
 ## Co se nepřenese samo
 
-Tohle je potřeba vědět dopředu, protože se to bude týkat modulu M1:
-
 - **Fotografie a návody.** Modul M1 je ukládá do Supabase Storage. Aby přesun zůstal
   levný, chodí se k nim přes vlastní rozhraní v `src/lib/storage/` — hotovo v M1, včetně
   překladu chybových hlášek úložiště. Přímé volání Storage ze stránek nikde nezůstalo.
+- **Fotodokumentace údržby.** M3 přidává druhou nádobu `zakazky` (migrace 0012). Vlastní,
+  ne sdílenou s M1: fotka z checklistu a návod ke stroji mají jiný životní cyklus i jiná
+  pravidla přístupu, a jedna nádoba by je musela rozplétat podle tvaru cesty.
 - **Realtime.** Dashboard se má obnovovat bez načtení stránky. Na holém Postgresu by to
   znamenalo SSE nebo dotazování v intervalu.
 - **Plánovač.** `pg_cron` je rozšíření PostgreSQL, funguje i mimo Supabase — ale na

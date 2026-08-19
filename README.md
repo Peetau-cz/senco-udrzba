@@ -10,13 +10,14 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
 
-Stav: **M0 (základ)** hotový — přihlášení, role a oprávnění vynucená v databázi.
-**M1 (evidence zařízení)** hotový a čeká na schválení: schéma, karty, formuláře,
-přílohy (fotky, návody, certifikáty), správa typů a jejich vlastních parametrů,
-strom umístění a filtrování seznamu po sloupcích.
+Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené — přihlášení,
+role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
+parametry, strom umístění.
+**M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
+**M3 (plán a provedení)** rozpracovaný — plán údržby na kartě zařízení, seznam
+zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
 Historie zařízení na kartě záměrně chybí — doplní ji M5.
-Import zařízení z CSV (rozhodnutí P6) se udělá až s M2, aby vznikl jedním
-průchodem i pro šablony.
+Import zařízení a šablon z CSV (rozhodnutí P6) přijde po M3.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
 
 ---
@@ -101,6 +102,34 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
+Ke schématu patří ještě čtyři skripty, které se pouštějí stejně: `supabase/tests/sablony.sql`
+ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
+vydání nové verze šablony se zadanými termíny, `supabase/tests/zakazky.sql` neměnnost
+uzavřené zakázky a `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače.
+
+## Noční plánovač
+
+Zakázky zakládá úloha `senco-udrzba-planovac` každý den ve 3:00 (migrace
+`0014_nocni_uloha_planovace.sql`). Potřebuje rozšíření **`pg_cron`** — na Supabase se zapíná
+v Dashboardu, *Database → Extensions*. Samotný plánovač na něm nezávisí: je to funkce
+`public.zaloz_zakazky()` a jde ji zavolat i ručně, takže bez `pg_cron` chybí jen spouštěč.
+
+Na noční úlohu se ale nečeká. Jakmile garant uloží termíny na kartě zařízení, aplikace
+rovnou zavolá `naplanuj_zarizeni` a napíše, kolik úkonů naplánovala — termín na dnešek
+znamená „dneska se to má udělat", ne „zítra o tom začneme uvažovat".
+
+Ta funkce je jediná cesta k plánovači zvenčí a bere **jedno zařízení**: na jeho oblast se
+dá zeptat stejné funkce jako politika nad `plan_udrzby`, takže se pravidla nerozcházejí.
+`zaloz_zakazky` právo `EXECUTE` nemá nikdo — jede napříč všemi oblastmi a nemá koho se
+zeptat na oprávnění.
+
+| Dotaz | K čemu |
+|---|---|
+| `select * from cron.job;` | jaké úlohy jsou naplánované |
+| `select * from cron.job_run_details order by start_time desc limit 10;` | jak dopadly poslední běhy |
+| `select public.zaloz_zakazky();` | naplánovat celý podnik hned (jen jako `postgres`) |
+| `select public.naplanuj_zarizeni('<id>');` | naplánovat jeden stroj, s kontrolou oprávnění |
+
 ## Přílohy karet zařízení
 
 Fotky, návody a certifikáty leží v **neveřejné** nádobě `zarizeni` v Supabase Storage,
@@ -114,6 +143,11 @@ a v `next.config.ts` u server actions (jinak by se soubor nad 1 MB vůbec neodes
 Nahrávání, mazání i podepisování odkazů obstarává `src/lib/storage/` — jediné místo,
 které o Supabase Storage ví. Pravidla pro soubory (velikost, typy, cesta) jsou vedle
 v `src/lib/zarizeni/soubory.ts` a jsou schválně bez závislostí, aby se daly testovat.
+
+Fotodokumentace údržby má **vlastní** nádobu `zakazky` z migrace `0012_uloziste_zakazek.sql`.
+Přijímá jen JPG, PNG a WEBP — tedy formáty, které prohlížeč umí zobrazit; HEIC z iPadu
+Safari při odeslání přes formulářové pole sám převádí na JPEG. Nahrávat jde jen k otevřené
+zakázce, po jejím uzavření to zarazí politika úložiště i trigger nad `zakazka_foto`.
 
 ## Zásady, které platí napříč kódem
 

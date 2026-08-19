@@ -218,18 +218,21 @@ Obě jsou `SECURITY INVOKER`, takže RLS platí i skrz ně.
 ### 2.4 Plánování a provedení
 
 ```
-plan_udrzby (id, zarizeni_id, sablona_ukon_id, dalsi_termin,
+plan_udrzby (id, zarizeni_id, sablona_id, ukon_klic, dalsi_termin,
              posledni_provedeno_at, aktivni)
     ← živý stav plánovače, jeden řádek na kombinaci zařízení × úkon
     ▼  pg_cron zakládá
-zakazka (id, zarizeni_id, sablona_verze_id, plan_udrzby_id,
+zakazka (id, zarizeni_id, sablona_verze_id, profese_role_id,
          planovany_termin, stav, prirazeno_uzivateli_id,
          zahajeno_at, dokonceno_at, dokoncil_id, poznamka)
     │   stav: naplanovano | probiha | dokonceno | zruseno
-    │   UNIQUE (plan_udrzby_id, planovany_termin)  ← idempotence plánovače
+    │   UNIQUE (zarizeni_id, planovany_termin, profese_role_id, sablona_verze_id)
+    │          where stav in ('naplanovano','probiha')   ← skupina zakázky
     │
-    └── zakazka_ukon (id, zakazka_id, sablona_ukon_id, poradi,
-                      nazev_snapshot, popis_snapshot, kontrolni_body_snapshot,
+    └── zakazka_ukon (id, zakazka_id, plan_udrzby_id, sablona_ukon_id, poradi,
+                      nazev_snapshot, popis_snapshot, kontrolni_body,
+                      vyzaduje_foto, vyzaduje_hodnotu, nabizi_poznamku,
+                      jednotka_snapshot, mez_min_snapshot, mez_max_snapshot,
                       stav, hodnota, poznamka, potvrzeno_at, potvrdil_id)
             │   stav: nesplneno | splneno | nelze_provest
             │   ← materializovaný checklist, viz R3
@@ -237,6 +240,59 @@ zakazka (id, zarizeni_id, sablona_verze_id, plan_udrzby_id,
 ```
 
 Typ údržby uživatel nevybírá — vyplývá z matice přiřazené zařízení (ř. 119–120 zadání).
+
+**Proč se plán neváže na `sablona_ukon_id`.** Původní návrh s tím počítal, při stavbě M3 se
+ale ukázalo, že to s verzováním z M2 nemůže fungovat: `zaloz_navrh_verze` matici *kopíruje*,
+takže každý úkon má v nové verzi nové `id`. Po vydání verze 2 by plán ukazoval na řádky
+verze 1 — plánovalo by se podle archivované matice, nebo by garant zadával termíny znovu
+od začátku. Chybí tedy odpověď na otázku, kterou samo verzování neřeší: *co dělá „týdenní
+kontrolu vřetena" ve verzi 3 týmž úkonem jako ve verzi 1.* Ani název (garant přejmenovává),
+ani pořadí (garant přeskládává). Úkon proto v migraci 0010 dostal stálý `klic`, který kopie
+do dalšího návrhu přenáší, a plán se váže na dvojici `(zarizeni_id, sablona_id)` a ten klíč.
+Vydání nové verze pak plán jen srovná: přibylé úkony doplní, vyřazené zneaktivní, zadané
+termíny nechá být.
+
+**Kdy vzniká první termín.** Nedopočítává se z data přiřazení ani ze společného data pro celý
+stroj — zadává ho garant u každého úkonu zvlášť (rozhodnutí z 19. 8. 2026). Proto je
+`dalsi_termin` nullable: řádek plánu vznikne přiřazením sám, ale dokud v něm termín není,
+plánovač ho přeskočí a garant ho vidí v seznamu k doplnění. Stejný mechanismus obslouží
+i úkon nově přidaný do matice.
+
+**Co slučuje úkony do jedné zakázky.** Návrh měl na zakázce zároveň `plan_udrzby_id` (tedy
+jeden úkon) i seznam `zakazka_ukon` (tedy víc úkonů). To si odporuje a wireframe 5.3
+rozhoduje ve prospěch druhého: kroky checklistu mají vlastní kontrolní body, takže krok *je*
+úkon z matice a vazba na plán patří na krok. Skupinu tvoří **stroj + termín + profese**
+(rozhodnutí z 19. 8. 2026) — jedna zakázka je jedna cesta technika ke stroji. Bez profese by
+u CNC matice spadly dvě revize elektro do checklistu údržbáře CNC, který na ně nemá
+kvalifikaci; se stejným datem tak vzniknou dvě zakázky, každá pro svou profesi. Databáze se
+na profesi *neptá* při zápisu: kdo zakázku odklikne, omezuje jen oblast. Profese říká, komu
+se zakázka nabízí, ne kdo jediný smí — vynucená by vedla k tomu, že zaskočená směna systém
+obejde papírem.
+
+**Úkon po termínu nezakládá zakázku každý cyklus znovu.** Dokud stávající není hotová, další
+nevzniká; jen se u ní počítá zpoždění (rozhodnutí z 19. 8. 2026). Jinak by se po měsíci
+zameškané týdenní údržby sešly čtyři zakázky za totéž a technik by odklikával i to, co už
+nemá smysl dělat pozpětku.
+
+**Skupina omezuje jen otevřené zakázky.** Původní index (migrace 0011) vylučoval pouze
+zrušené; při psaní plánovače se ukázalo, že to zadrhne. Dokončená zakázka by klíč skupiny
+držela dál, takže úkon, kterému garant nastaví tentýž termín až potom, by neměl kam přijít —
+do uzavřené zakázky ho přidat nelze a novou založit taky ne. Plánovač by ho tiše přeskakoval
+napořád. Hotové a zrušené zakázky proto skupinu neblokují; obojí je uzavřená kapitola.
+Do klíče přibyla `sablona_verze_id`, protože stroj může mít přiřazených víc šablon a zakázka
+nese verzi jedinou — bez toho by se úkony ze dvou matic slily do zakázky, která by o sobě
+tvrdila, že se dělá podle jedné z nich, a R3 by přestalo platit. Opraveno migrací 0013.
+
+**Zameškané cykly se přeskakují.** U `od_planu` nestačí přičíst jeden interval: týdenní úkon
+udělaný o tři týdny později by dostal termín v minulosti a byl by po termínu hned, jak ho
+technik odklikne. `dalsi_termin` proto posouvá mřížku po celých intervalech, dokud termín
+neminula skutečné provedení — kalendář zůstává na původních datech (1. 9., 8. 9., 15. 9. …)
+a zameškané cykly se nesčítají. Je to táž úvaha jako u rozhodnutí o zakázce po termínu.
+
+**Interval pro další termín se čte z platné verze, ne ze zamrazeného snapshotu.** Když garant
+mezi naplánováním a provedením změnil týdenní úkon na měsíční, další termín má vyjít podle
+toho nového — to je smysl toho, že se změna matice projeví sama. Snapshot slouží historii,
+ne dalšímu plánování.
 
 ### 2.5 Provozní deník a historie
 

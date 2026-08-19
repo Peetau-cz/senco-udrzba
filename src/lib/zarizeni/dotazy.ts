@@ -7,7 +7,7 @@
  * druhá pravda, kterou by nikdo neudržoval (zásada R1).
  */
 
-import { odkazyKeStazeni } from '@/lib/storage'
+import { NADOBA_ZARIZENI, odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { nactiNabidkuUmisteni } from '@/lib/umisteni/dotazy'
 import { STAVY_ZARIZENI, type StavZarizeni } from '@/lib/zarizeni/formular'
@@ -169,7 +169,7 @@ export async function nactiSouboryZarizeni(zarizeniId: string) {
   const radky = data ?? []
   if (radky.length === 0) return []
 
-  const odkazy = await odkazyKeStazeni(radky.map((r) => r.cesta))
+  const odkazy = await odkazyKeStazeni(NADOBA_ZARIZENI, radky.map((r) => r.cesta))
 
   return radky.map((radek) => ({
     ...radek,

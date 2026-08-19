@@ -126,6 +126,12 @@ begin
 end;
 $$;
 
+-- `drop if exists` před vytvořením schválně. Zbytek tohohle souboru je psaný
+-- tak, aby šel pustit opakovaně - nádoba se upsertuje, politiky se nejdřív
+-- zahazují, funkce je `create or replace`. Samotné `create trigger` je jediné,
+-- co idempotentní není, a druhý běh migrace by na něm spadl s 42710.
+drop trigger if exists zarizeni_uklid_souboru on public.zarizeni;
+
 create trigger zarizeni_uklid_souboru
   after delete on public.zarizeni
   for each row execute function public.uklid_souboru_zarizeni();
