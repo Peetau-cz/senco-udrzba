@@ -98,7 +98,9 @@ declare
   v_plan_a   uuid;
   v_plan_b   uuid;
   v_uzivatel uuid;
+  v_stroj2   uuid;
   v_pocet    integer;
+  v_pocet2   integer;
   v_termin   date;
   v_kontrol  integer := 0;
 begin
@@ -312,6 +314,57 @@ begin
     raise exception 'Zakázka s chybějící povinnou fotkou šla dokončit.';
   exception
     when check_violation then null;
+  end;
+  v_kontrol := v_kontrol + 1;
+
+  -- 18. Naplánování jednoho stroje sáhne opravdu jen na něj -------------------
+  -- Tuhle cestu volá aplikace hned po uložení termínů. Kdyby zabírala šířeji,
+  -- garant jedné oblasti by naplánoval údržbu celému podniku.
+  insert into public.zarizeni (oblast_id, typ_zarizeni_id, nazev, inventarni_cislo)
+  values (v_oblast, v_typ, 'Druhý stroj pro plánovač', 'TEST-PLANOVAC-2')
+  returning id into v_stroj2;
+
+  insert into public.zarizeni_sablona (zarizeni_id, sablona_id, oblast_id)
+  values (v_stroj2, v_sablona, v_oblast);
+
+  -- Termín jen jednomu úkonu druhého stroje, ať je počet jednoznačný.
+  update public.plan_udrzby
+  set dalsi_termin = current_date
+  where zarizeni_id = v_stroj2
+    and ukon_klic = (select ukon_klic from public.plan_udrzby where id = v_plan_a);
+
+  select count(*) into v_pocet
+  from public.zakazka_ukon u
+  join public.zakazka k on k.id = u.zakazka_id
+  where k.zarizeni_id = v_stroj;
+
+  if public.naplanuj_zarizeni(v_stroj2) <> 1 then
+    raise exception 'Naplánování druhého stroje nezaložilo právě jeden krok.';
+  end if;
+  v_kontrol := v_kontrol + 1;
+
+  select count(*) into v_pocet2
+  from public.zakazka_ukon u
+  join public.zakazka k on k.id = u.zakazka_id
+  where k.zarizeni_id = v_stroj;
+
+  if v_pocet2 <> v_pocet then
+    raise exception 'Naplánování druhého stroje sáhlo i na první: % místo %.', v_pocet2, v_pocet;
+  end if;
+  v_kontrol := v_kontrol + 1;
+
+  -- 19. Opakované naplánování téhož stroje nic nepřidá ------------------------
+  if public.naplanuj_zarizeni(v_stroj2) <> 0 then
+    raise exception 'Opakované naplánování stroje založilo zakázky znovu.';
+  end if;
+  v_kontrol := v_kontrol + 1;
+
+  -- 20. Neexistující stroj skončí chybou, ne tichým nulou ---------------------
+  begin
+    perform public.naplanuj_zarizeni(gen_random_uuid());
+    raise exception 'Naplánování neexistujícího stroje prošlo.';
+  exception
+    when foreign_key_violation then null;
   end;
   v_kontrol := v_kontrol + 1;
 

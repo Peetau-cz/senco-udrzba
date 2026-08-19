@@ -114,11 +114,21 @@ Zakázky zakládá úloha `senco-udrzba-planovac` každý den ve 3:00 (migrace
 v Dashboardu, *Database → Extensions*. Samotný plánovač na něm nezávisí: je to funkce
 `public.zaloz_zakazky()` a jde ji zavolat i ručně, takže bez `pg_cron` chybí jen spouštěč.
 
+Na noční úlohu se ale nečeká. Jakmile garant uloží termíny na kartě zařízení, aplikace
+rovnou zavolá `naplanuj_zarizeni` a napíše, kolik úkonů naplánovala — termín na dnešek
+znamená „dneska se to má udělat", ne „zítra o tom začneme uvažovat".
+
+Ta funkce je jediná cesta k plánovači zvenčí a bere **jedno zařízení**: na jeho oblast se
+dá zeptat stejné funkce jako politika nad `plan_udrzby`, takže se pravidla nerozcházejí.
+`zaloz_zakazky` právo `EXECUTE` nemá nikdo — jede napříč všemi oblastmi a nemá koho se
+zeptat na oprávnění.
+
 | Dotaz | K čemu |
 |---|---|
 | `select * from cron.job;` | jaké úlohy jsou naplánované |
 | `select * from cron.job_run_details order by start_time desc limit 10;` | jak dopadly poslední běhy |
-| `select public.zaloz_zakazky();` | naplánovat hned, vrátí počet nových kroků |
+| `select public.zaloz_zakazky();` | naplánovat celý podnik hned (jen jako `postgres`) |
+| `select public.naplanuj_zarizeni('<id>');` | naplánovat jeden stroj, s kontrolou oprávnění |
 
 ## Přílohy karet zařízení
 

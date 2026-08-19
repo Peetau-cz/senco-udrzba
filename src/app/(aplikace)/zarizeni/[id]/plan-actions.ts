@@ -63,12 +63,37 @@ export async function ulozTerminy(
     }
   }
 
+  // Naplánovat hned, ne až noční úlohou. Termín zadaný na dnešek znamená
+  // „dneska se to má udělat", ne „zítra o tom začneme uvažovat" - a garant,
+  // který právě uložil plán, čeká, že je plán živý.
+  //
+  // Chyba plánovače se nehlásí jako selhání uložení: termíny v databázi jsou
+  // a noční úloha zakázky stejně založí. Věta o tom, kolik jich vzniklo, se
+  // v takovém případě prostě nepřipojí.
+  const { data: naplanovano } = await supabase.rpc('naplanuj_zarizeni', {
+    p_zarizeni: zarizeniId,
+  })
+
   revalidatePath(`/zarizeni/${zarizeniId}`)
   revalidatePath('/plan')
 
-  const pocet = zmeny.length
-  return {
-    hotovo:
-      pocet === 1 ? 'Termín uložen.' : `Uloženo ${pocet} ${pocet <= 4 ? 'termíny' : 'termínů'}.`,
-  }
+  return { hotovo: `${popisUlozeni(zmeny.length)} ${popisNaplanovani(naplanovano ?? 0)}` }
+}
+
+function popisUlozeni(pocet: number): string {
+  if (pocet === 1) return 'Termín uložen.'
+  if (pocet <= 4) return `Uloženy ${pocet} termíny.`
+  return `Uloženo ${pocet} termínů.`
+}
+
+/**
+ * Nula je tu důležitá informace, ne mlčení: termín dál než čtrnáct dnů je
+ * v pořádku a zakázka na něj vzniknout nemá. Bez téhle věty by to vypadalo,
+ * že se uložení nepovedlo.
+ */
+function popisNaplanovani(pocet: number): string {
+  if (pocet === 0) return 'Nic není splatné v nejbližších 14 dnech, zakázka zatím nevznikla.'
+  if (pocet === 1) return 'Naplánován 1 úkon.'
+  if (pocet <= 4) return `Naplánovány ${pocet} úkony.`
+  return `Naplánováno ${pocet} úkonů.`
 }

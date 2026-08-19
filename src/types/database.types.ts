@@ -984,8 +984,13 @@ export type Database = {
         Args: { p_zakazka: string }
         Returns: undefined
       }
+      naplanuj_zarizeni: {
+        Args: { p_zarizeni: string }
+        Returns: number
+      }
       // zaloz_zakazky tu schválně není: právo EXECUTE nemá `authenticated`
-      // ani `anon` (migrace 0013), spouští ji noční úloha.
+      // ani `anon` (migrace 0015), protože jede napříč všemi oblastmi. Ven
+      // vede jen cesta přes jedno zařízení, tedy naplanuj_zarizeni.
     }
     Enums: {
       vztah_k_oblasti: 'garant' | 'spolupracujici'
