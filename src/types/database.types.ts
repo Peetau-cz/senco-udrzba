@@ -911,7 +911,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_dnesni_plan: {
+        Row: {
+          zakazka_id: string
+          zarizeni_id: string
+          oblast_id: string
+          zarizeni_nazev: string
+          inventarni_cislo: string | null
+          planovany_termin: string
+          stav: Database['public']['Enums']['stav_zakazky']
+          prirazeno_uzivateli_id: string | null
+          profese_role_id: string
+          profese_nazev: string
+          kroku: number
+          vyrizeno: number
+        }
+        Relationships: []
+      }
+      v_po_terminu: {
+        Row: {
+          zakazka_id: string
+          zarizeni_id: string
+          oblast_id: string
+          zarizeni_nazev: string
+          inventarni_cislo: string | null
+          planovany_termin: string
+          stav: Database['public']['Enums']['stav_zakazky']
+          prirazeno_uzivateli_id: string | null
+          profese_role_id: string
+          profese_nazev: string
+          dnu_zpozdeni: number
+          kroku: number
+          vyrizeno: number
+        }
+        Relationships: []
+      }
+      v_plneni_matice: {
+        Row: {
+          oblast_id: string
+          /** První den měsíce, podle plánovaného termínu. */
+          obdobi: string
+          celkem: number
+          splneno: number
+          po_terminu: number
+          /** „Nelze provést" — mimo výpočet, vykazuje se vedle. */
+          neprovedeno: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ma_roli: {
