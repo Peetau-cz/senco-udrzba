@@ -7,7 +7,7 @@ import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { nactiSablonu } from '@/lib/sablony/dotazy'
 import { ulozSablonu } from '../../actions'
 
-export const metadata = { title: 'Úprava šablony' }
+export const metadata = { title: 'Údaje šablony' }
 
 /**
  * Hlavička šablony - název, popis, nabízení.
@@ -47,9 +47,9 @@ export default async function StrankaUpravaSablony({
     <div className="max-w-3xl space-y-6">
       <div className="space-y-1">
         <OdkazZpet href={`/sablony/${sablona.id}`} popisek={sablona.nazev} />
-        <h1 className="text-2xl font-semibold">Úprava šablony</h1>
+        <h1 className="text-2xl font-semibold">Údaje šablony</h1>
         <p className="text-muted-foreground">
-          Matice úkonů se mění přes verze, ne tady — viz záložka Verze.
+          {'Název, oblast a zda se šablona nabízí. Obsah matice se mění přes verze — tlačítkem „Upravit matici" na detailu šablony.'}
         </p>
       </div>
 
