@@ -57,3 +57,24 @@ export function idsUmisteniProFiltr(nabidka: NabidkaProFiltr, kod?: string): str
   // Vrátit prázdné pole by znamenalo „nic nenalezeno" a vypadalo to jako chyba.
   return undefined
 }
+
+/** Tvar, který stačí k součtu. `UzelUmisteni` z `dotazy.ts` mu vyhoví. */
+export type UzelSPoctem = {
+  pocetZarizeni: number
+  deti: UzelSPoctem[]
+}
+
+/**
+ * Zařízení v celém podstromu, ne jen ta zapsaná přímo na uzel.
+ *
+ * Stroj se skoro vždycky zařadí do provozu, ne rovnou do haly. Kdyby hala
+ * počítala jen svoje přímá zařízení, ukazovala by u plné haly nulu. Filtr
+ * seznamu zařízení bere halu i s provozy (`idsUmisteniProFiltr`) - tenhle
+ * součet mu odpovídá, takže počet u haly sedí s tím, co filtr vypíše.
+ */
+export function pocetZarizeniVPodstromu(uzel: UzelSPoctem): number {
+  return uzel.deti.reduce(
+    (soucet, dite) => soucet + pocetZarizeniVPodstromu(dite),
+    uzel.pocetZarizeni,
+  )
+}

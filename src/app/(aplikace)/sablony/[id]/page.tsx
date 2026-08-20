@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { CalendarClock, Hash, Layers, Users } from 'lucide-react'
+import { CalendarClock, Hash, Layers, Pencil, Users } from 'lucide-react'
 import { notFound, redirect } from 'next/navigation'
 import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { FormularSPotvrzenim } from '@/components/ui/potvrzeni'
 import { EditorMatice } from '@/components/sablony/editor-matice'
 import { NahledMatice } from '@/components/sablony/nahled-matice'
 import { ZnackaVerze } from '@/components/sablony/znacka-verze'
@@ -112,10 +113,44 @@ export default async function DetailSablony({
           ) : null}
         </div>
 
+        {/* Hlavní akce na detailu šablony je změna obsahu matice, ne přejmenování.
+            Matice se ale needituje přímo (R3), takže tlačítko za uživatele otevře
+            novou verzi - založení návrhu je v databázi idempotentní, takže
+            opakovaný klik nezaloží druhý. Údaje šablony zůstávají vedle, potichu. */}
         {smiSpravovat ? (
-          <Button asChild size="dotyk" variant="outline">
-            <Link href={`/sablony/${sablona.id}/upravit`}>Upravit</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild size="dotyk" variant="outline">
+              <Link href={`/sablony/${sablona.id}/upravit`}>
+                <Pencil aria-hidden="true" className="size-4" />
+                Upravit údaje
+              </Link>
+            </Button>
+
+            {navrh ? (
+              <Button asChild size="dotyk">
+                <Link href={`/sablony/${sablona.id}?zalozka=matice`}>
+                  <Layers aria-hidden="true" className="size-4" />
+                  Pokračovat v návrhu v{navrh.cislo_verze}
+                </Link>
+              </Button>
+            ) : (
+              <FormularSPotvrzenim
+                akce={zalozNavrh.bind(null, sablona.id)}
+                otazka="Otevřít novou verzi matice?"
+                popis={
+                  platna
+                    ? `Zkopíruje se verze ${platna.cislo_verze} a otevře se k úpravám. Strojům platí dál verze ${platna.cislo_verze}, dokud novou neaktivujete.`
+                    : 'Šablona zatím nemá žádnou verzi — otevře se prázdná matice.'
+                }
+                potvrdit={`Otevřít verzi ${(verze[0]?.cislo_verze ?? 0) + 1}`}
+              >
+                <Button type="submit" size="dotyk">
+                  <Layers aria-hidden="true" className="size-4" />
+                  Upravit matici
+                </Button>
+              </FormularSPotvrzenim>
+            )}
+          </div>
         ) : null}
       </div>
 
@@ -155,12 +190,7 @@ export default async function DetailSablony({
       ) : null}
 
       {zalozka === 'verze' ? (
-        <ZalozkaVerze
-          sablonaId={sablona.id}
-          verze={verze}
-          maNavrh={Boolean(navrh)}
-          smiSpravovat={smiSpravovat}
-        />
+        <ZalozkaVerze sablonaId={sablona.id} verze={verze} smiSpravovat={smiSpravovat} />
       ) : null}
 
       {zalozka === 'zarizeni' ? (
@@ -253,7 +283,7 @@ async function ZalozkaMatice({
           <p className="font-medium">Šablona zatím nemá žádnou matici.</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {smiSpravovat
-              ? 'Otevřete novou verzi v záložce Verze a doplňte úkony.'
+              ? 'Otevřete ji tlačítkem „Upravit matici" vpravo nahoře a doplňte úkony.'
               : 'Matici sestavuje garant oblasti.'}
           </p>
         </CardContent>
@@ -292,38 +322,24 @@ async function ZalozkaMatice({
 // Verze
 // -----------------------------------------------------------------------------
 
+/**
+ * Přehled verzí.
+ *
+ * Novou verzi tudy zakládat nejde schválně - je to hlavní akce šablony a sedí
+ * v hlavičce, viditelná ze všech záložek. Dvě tlačítka na jednu věc na jedné
+ * obrazovce jsou horší než jedno na správném místě.
+ */
 async function ZalozkaVerze({
   sablonaId,
   verze,
-  maNavrh,
   smiSpravovat,
 }: {
   sablonaId: string
   verze: Awaited<ReturnType<typeof nactiVerze>>
-  maNavrh: boolean
   smiSpravovat: boolean
 }) {
   return (
     <div className="space-y-4">
-      {smiSpravovat && !maNavrh ? (
-        <Card>
-          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
-            <div>
-              <p className="font-medium">Změnit obsah matice</p>
-              <p className="text-sm text-muted-foreground">
-                Otevře novou verzi a zkopíruje do ní to, co právě platí. Až ji aktivujete, projeví
-                se u všech přiřazených strojů naráz.
-              </p>
-            </div>
-            <form action={zalozNavrh.bind(null, sablonaId)}>
-              <Button type="submit" size="dotyk">
-                Otevřít novou verzi
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      ) : null}
-
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -371,12 +387,23 @@ async function ZalozkaVerze({
 
                         {smiSpravovat && v.stav === 'navrh' ? (
                           <>
-                            <form action={aktivujVerzi.bind(null, sablonaId, v.id)}>
+                            <FormularSPotvrzenim
+                              akce={aktivujVerzi.bind(null, sablonaId, v.id)}
+                              otazka={`Aktivovat verzi ${v.cislo_verze}?`}
+                              popis="Dosavadní platná verze se archivuje. Aktivovanou verzi už nejde upravit ani smazat — od té chvíle se podle ní plánuje údržba."
+                              potvrdit="Aktivovat"
+                            >
                               <Button type="submit" size="sm">
                                 Aktivovat
                               </Button>
-                            </form>
-                            <form action={zahodNavrh.bind(null, sablonaId, v.id)}>
+                            </FormularSPotvrzenim>
+                            <FormularSPotvrzenim
+                              akce={zahodNavrh.bind(null, sablonaId, v.id)}
+                              otazka={`Zahodit návrh verze ${v.cislo_verze}?`}
+                              popis="Rozpracovaná matice se smaže a nepůjde obnovit."
+                              potvrdit="Zahodit"
+                              nebezpecne
+                            >
                               <Button
                                 type="submit"
                                 variant="ghost"
@@ -385,7 +412,7 @@ async function ZalozkaVerze({
                               >
                                 Zahodit
                               </Button>
-                            </form>
+                            </FormularSPotvrzenim>
                           </>
                         ) : null}
                       </div>

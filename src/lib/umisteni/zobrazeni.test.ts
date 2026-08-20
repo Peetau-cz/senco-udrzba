@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cestaUmisteni, idsUmisteniProFiltr } from './zobrazeni'
+import { cestaUmisteni, idsUmisteniProFiltr, pocetZarizeniVPodstromu } from './zobrazeni'
 
 describe('cesta umístění', () => {
   it('spojí halu a provoz', () => {
@@ -68,5 +68,35 @@ describe('umístění pro filtr zařízení', () => {
 
   it('neznámý kód z adresy se nefiltruje, nevrací prázdný výsledek', () => {
     expect(idsUmisteniProFiltr(nabidka, 'NEEXISTUJE')).toBeUndefined()
+  })
+})
+
+describe('počet zařízení v podstromu', () => {
+  it('hala sečte zařízení ve svých provozech', () => {
+    const hala = {
+      pocetZarizeni: 0,
+      deti: [
+        { pocetZarizeni: 4, deti: [] },
+        { pocetZarizeni: 3, deti: [] },
+      ],
+    }
+
+    expect(pocetZarizeniVPodstromu(hala)).toBe(7)
+  })
+
+  it('přičte i stroje stojící přímo v hale', () => {
+    const hala = { pocetZarizeni: 2, deti: [{ pocetZarizeni: 4, deti: [] }] }
+
+    expect(pocetZarizeniVPodstromu(hala)).toBe(6)
+  })
+
+  it('provoz bez dětí vrátí svoje vlastní číslo', () => {
+    expect(pocetZarizeniVPodstromu({ pocetZarizeni: 4, deti: [] })).toBe(4)
+  })
+
+  it('prázdná hala je nula', () => {
+    expect(
+      pocetZarizeniVPodstromu({ pocetZarizeni: 0, deti: [{ pocetZarizeni: 0, deti: [] }] }),
+    ).toBe(0)
   })
 })

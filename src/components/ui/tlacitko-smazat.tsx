@@ -3,6 +3,7 @@
 import { useFormStatus } from 'react-dom'
 import { Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { FormularSPotvrzenim } from '@/components/ui/potvrzeni'
 
 function Tlacitko({
   popisek,
@@ -42,15 +43,16 @@ function Tlacitko({
 /**
  * Mazání s potvrzením.
  *
- * Ptá se přes window.confirm, protože smazaný záznam se z aplikace nevrátí.
- * Bez javascriptu potvrzení nepřijde a smazání proběhne rovnou - to je
- * přijatelné, obojí totiž stejně nakonec posoudí databáze.
+ * Ptá se vlastním oknem, protože smazaný záznam se z aplikace nevrátí. Bez
+ * javascriptu potvrzení nepřijde a smazání proběhne rovnou - to je přijatelné,
+ * obojí totiž stejně nakonec posoudí databáze.
  */
 export function TlacitkoSmazat({
   akce,
   nazev,
   popisek,
   otazka,
+  popis,
   vyrazne = false,
 }: {
   akce: (formData: FormData) => Promise<void>
@@ -59,6 +61,8 @@ export function TlacitkoSmazat({
   /** Viditelný text tlačítka. Bez něj se vykreslí jen ikona koše. */
   popisek?: string
   otazka?: string
+  /** Doplnění pod otázku, když samotný název nestačí říct, o co se přijde. */
+  popis?: string
   /**
    * Ohraničené tlačítko místo ghost varianty. Pro místa, kde mazání stojí
    * samostatně a nemá se o co opřít — třeba pod náhledem fotky, kde se šedý
@@ -67,13 +71,14 @@ export function TlacitkoSmazat({
   vyrazne?: boolean
 }) {
   return (
-    <form
-      action={akce}
-      onSubmit={(udalost) => {
-        if (!window.confirm(otazka ?? `Opravdu smazat „${nazev}"?`)) udalost.preventDefault()
-      }}
+    <FormularSPotvrzenim
+      akce={akce}
+      otazka={otazka ?? `Opravdu smazat „${nazev}"?`}
+      popis={popis ?? 'Smazaný záznam se z aplikace nevrátí.'}
+      potvrdit="Smazat"
+      nebezpecne
     >
       <Tlacitko popisek={popisek} nazev={nazev} vyrazne={vyrazne} />
-    </form>
+    </FormularSPotvrzenim>
   )
 }
