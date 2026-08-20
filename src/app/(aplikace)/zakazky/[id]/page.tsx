@@ -135,9 +135,12 @@ export default async function StrankaZakazky({
       ) : null}
 
       <Card className="overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b bg-secondary/40 px-4 py-3">
+        {/* Hlavička postupu: silná rýska místo šedého pruhu, stejně jako
+            u hlaviček tabulek. Podbarvený pruh uvnitř bílé karty dělal
+            zablácené pole a čísla na něm ztrácela ostrost. */}
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b-2 border-b-foreground/35 px-4 py-3">
           <div>
-            <p className="text-sm font-medium">Postup</p>
+            <p className="navesti">Postup</p>
             <p className="cislice-tabulkove text-sm text-muted-foreground">
               {hotovo} z {kroky.length} hotovo
               {zbyva > 0 && otevrena ? ` · zbývá ${zbyva}` : ''}
@@ -150,10 +153,10 @@ export default async function StrankaZakazky({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-label="Hotové kroky"
-            className="h-2 w-full max-w-sm overflow-hidden rounded-full bg-muted"
+            className="h-2.5 w-full max-w-sm overflow-hidden rounded-[2px] border border-border bg-muted"
           >
             <div
-              className="h-full rounded-full bg-stav-splneno transition-all"
+              className="h-full bg-stav-splneno transition-all"
               style={{ width: `${procentoHotovo(hotovo, kroky.length)}%` }}
             />
           </div>

@@ -69,7 +69,7 @@ export default async function StrankaPlneni({
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-secondary/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="hlavicka-tabulky">
               <tr>
                 <th className="px-4 py-3 font-medium">Oblast</th>
                 <th className="px-4 py-3 text-right font-medium">Splněno</th>
@@ -121,15 +121,11 @@ export default async function StrankaPlneni({
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t-2 bg-secondary/40">
+            <tfoot className="zapati-tabulky">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">Celkem</th>
-                <td className="cislice-tabulkove px-4 py-3 text-right font-medium">
-                  {souhrn.splneno}
-                </td>
-                <td className="cislice-tabulkove px-4 py-3 text-right font-medium">
-                  {souhrn.poTerminu}
-                </td>
+                <th className="px-4 py-3 text-left">Celkem</th>
+                <td className="cislice-tabulkove px-4 py-3 text-right">{souhrn.splneno}</td>
+                <td className="cislice-tabulkove px-4 py-3 text-right">{souhrn.poTerminu}</td>
                 <td className="cislice-tabulkove px-4 py-3 text-right text-muted-foreground">
                   {souhrn.neprovedeno}
                 </td>

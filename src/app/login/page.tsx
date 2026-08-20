@@ -13,7 +13,9 @@ export default async function StrankaPrihlaseni({
   const { pokracovat } = await searchParams
 
   return (
-    <main className="flex min-h-svh items-center justify-center bg-muted p-6">
+    // Fialová plocha je táž jako u boční lišty: první obrazovka má vypadat
+    // jako aplikace, do které se člověk hlásí, ne jako formulář na bílém listu.
+    <main className="flex min-h-svh items-center justify-center bg-navigace p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <LogoSenco vyska={72} className="mb-3" />

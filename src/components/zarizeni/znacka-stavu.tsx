@@ -17,11 +17,29 @@ const VZHLED: Record<string, string> = {
 export function ZnackaStavu({ stav }: { stav: string }) {
   return (
     <span
-      className={`inline-flex whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium ${
+      className={`inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-sm font-medium ${
         VZHLED[stav] ?? 'bg-secondary text-secondary-foreground'
       }`}
     >
       {popisekStavu(stav)}
     </span>
   )
+}
+
+/**
+ * Pruh stavu u levé hrany řádku tabulky.
+ *
+ * Táž barva jako ve značce, jen roztažená do hrany. Ve výpisu strojů se tím dá
+ * přejet očima sloupec a vidět, co je v opravě, aniž by se četl každý řádek.
+ * Odstavené a vyřazené zůstávají v barvě rýsky - nejsou to poruchy.
+ */
+const PRUH: Record<string, string> = {
+  v_provozu: 'border-l-stav-splneno',
+  odstaveno: 'border-l-border',
+  v_oprave: 'border-l-stav-poterminu',
+  vyrazeno: 'border-l-border',
+}
+
+export function pruhStavu(stav: string): string {
+  return PRUH[stav] ?? 'border-l-border'
 }

@@ -31,12 +31,16 @@
     --znacka-zelena-citelna: 155 95% 25%;
 
     /* Neutrální tóny mají nádech do fialova, aby ladily se značkou. Sytost je
-       nízká schválně - z tabulky zařízení nemá být barevný obraz. */
-    --background: 0 0% 100%;
-    --foreground: 288 35% 12%;
+       nízká schválně - z tabulky zařízení nemá být barevný obraz.
+
+       Podklad aplikace NENÍ bílý: je to dílenská šeď, na které bílé karty stojí
+       jako štítky na ponku. Dokud byl podklad bílý, karta se od stránky lišila
+       jen stínem a rozhraní se rozlévalo do jedné plochy. */
+    --background: 288 12% 93%;
+    --foreground: 285 18% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 288 35% 12%;
+    --card-foreground: 285 18% 10%;
 
     --primary: var(--znacka-zelena-citelna);
     --primary-foreground: 0 0% 100%;
@@ -45,21 +49,29 @@
     --zvyrazneni: var(--znacka-fialova);
     --zvyrazneni-foreground: 0 0% 100%;
 
-    --secondary: 292 24% 96%;
-    --secondary-foreground: 288 35% 12%;
+    /* Boční lišta. Fialová v plné ploše - pravidlo „fialová = navigace" se tím
+       uplatní na celou lištu místo jedné pilulky a aplikace dostane páteř. */
+    --navigace: var(--znacka-fialova);
+    --navigace-foreground: 0 0% 100%;
+    --navigace-tlumene: 294 32% 84%;
 
-    --muted: 292 24% 96%;
-    --muted-foreground: 288 12% 42%;
+    --secondary: 288 14% 88%;
+    --secondary-foreground: 285 18% 10%;
 
-    --accent: 294 30% 93%;
-    --accent-foreground: 288 35% 12%;
+    --muted: 288 14% 88%;
+    --muted-foreground: 288 10% 38%;
+
+    --accent: 288 16% 85%;
+    --accent-foreground: 285 18% 10%;
 
     /* Červená zůstává červená. Firemní barvy nesmí zabírat význam „chyba". */
     --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 290 20% 88%;
-    --input: 290 20% 88%;
+    /* Rýska je ostřejší, než bývá v administracích zvykem. Linka, kterou není
+       vidět, nic nedělí - a údržbář kouká na tablet přes halu, ne zblízka. */
+    --border: 288 13% 80%;
+    --input: 288 13% 74%;
     --ring: var(--znacka-zelena-citelna);
 
     /* Stavy údržby - jediné místo, kde se definují.
@@ -70,7 +82,8 @@
     --stav-dnes: var(--znacka-fialova);
     --stav-poterminu: 0 72% 42%;
 
-    --radius: 0.5rem;
+    /* Plech není oblázek. Zaoblení stačí tolik, aby roh neřezal. */
+    --radius: 0.375rem;
   }
 
   .dark {
@@ -95,6 +108,12 @@
     --zvyrazneni: var(--znacka-fialova);
     --zvyrazneni-foreground: 288 40% 8%;
 
+    /* Lišta jde proti světlému režimu opačným směrem: tam je fialová plocha
+       tmavší než okolí, tady musí být tmavší než karty, jinak by svítila. */
+    --navigace: 294 45% 15%;
+    --navigace-foreground: 292 25% 95%;
+    --navigace-tlumene: 294 20% 72%;
+
     --secondary: 288 22% 18%;
     --secondary-foreground: 292 25% 95%;
 
@@ -107,8 +126,8 @@
     --destructive: 0 72% 62%;
     --destructive-foreground: 288 40% 8%;
 
-    --border: 288 20% 24%;
-    --input: 288 20% 24%;
+    --border: 288 20% 28%;
+    --input: 288 20% 32%;
     --ring: var(--znacka-zelena-citelna);
 
     --stav-splneno: var(--znacka-zelena-citelna);
@@ -127,9 +146,31 @@
     font-feature-settings: 'tnum' 1;
   }
 
-  /* Číselné údaje v tabulkách plnění a v přehledech musí lícovat pod sebou. */
+  /* Nadpisy jdou do zúžené šířky. Archivo má osu šířky, takže je to pořád
+     totéž písmo, ne druhá rodina - nadpis a text drží stejnou kresbu.
+
+     Verzálky se drží jen na návěštích (.navesti). V zúžených verzálkách se
+     česká diakritika tluče o horní dotažnici a „ŘÍZENÍ ÚDRŽBY" se čte hůř než
+     „Řízení údržby", takže nadpisy zůstávají v běžné sazbě. */
+  h1,
+  h2 {
+    font-stretch: 87.5%;
+    letter-spacing: -0.005em;
+  }
+
+  /* Nadpisy karet jdou zúžené míň. Kdyby držely šířku s h1, přebíraly by mu
+     důraz - karta je pořád jen oddíl uvnitř stránky. */
+  h3 {
+    font-stretch: 92.5%;
+  }
+
+  /* Ražené údaje: inventární čísla, kódy, intervaly, počty.
+     Identifikátor se na stroj razí, nepíše. Jednotná šířka znaků navíc srovná
+     čísla pod sebe, takže sloupec jde porovnat pohledem, ne čtením. */
   .cislice-tabulkove {
+    font-family: var(--pismo-razene), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -142,5 +183,58 @@
       hsl(var(--znacka-zelena)) 0%,
       hsl(var(--znacka-fialova)) 100%
     );
+  }
+
+  /* Návěští nad nadpisem nebo nad údajem: říká, co je to za pole, ne co v něm
+     stojí. Zúžené verzálky - na dvou slovech se diakritika ještě unese. */
+  .navesti {
+    font-stretch: 80%;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    @apply text-muted-foreground;
+  }
+
+  /* Hlavička tabulky: názvy sloupců a silná rýska pod nimi.
+     Bez podkladového pruhu. Šedý pruh uvnitř bílé karty dělal z hlavičky
+     špinavé pole a černé verzálky na něm ztrácely ostrost; dělit řádek umí
+     rýska, a ta má proti oddělovačům řádků dvojnásobnou sílu, takže je
+     poznat, kde tabulka začíná. Text je černý na bílé, tedy nejvyšší kontrast,
+     jaký jde mít.
+     Drží se pohromadě v jedné třídě, protože stejná hlavička je v aplikaci
+     na osmi místech a rozcházely se. */
+  .hlavicka-tabulky {
+    font-stretch: 80%;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    line-height: 1.2;
+    text-align: left;
+    text-transform: uppercase;
+    @apply border-b-2 border-b-foreground/35 bg-transparent text-foreground;
+  }
+
+  /* Zápatí tabulky: součtový řádek. Zrcadlí hlavičku - žádný podklad, jen
+     silná rýska, tentokrát nad řádkem. Sazba ale zůstává datová, ne návěštní:
+     je to pořád číslo, jen sečtené, a nemá se číst jinak než čísla nad ním.
+     Odliší ho tučnost a ta rýska, ne šedý pruh. */
+  .zapati-tabulky {
+    @apply border-t-2 border-t-foreground/35 bg-transparent font-semibold;
+  }
+
+  /* Ražený štítek s kódem. Tam, kde se jmenuje stroj, šablona nebo umístění,
+     jeho kód sedí na štítku - stejně jako na stroji samotném. */
+  .stitek-razeny {
+    display: inline-block;
+    padding: 0.0625rem 0.375rem;
+    border-radius: 3px;
+    font-family: var(--pismo-razene), ui-monospace, monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+    @apply border border-border bg-secondary text-foreground;
   }
 }

@@ -116,9 +116,11 @@ export function HlavickaTabulkyZarizeni({
   const bezFiltru: HodnotyFiltru = { oblast: volby.oblast }
 
   return (
-    <thead className="border-b bg-secondary/60 text-left">
-      <tr className="text-xs uppercase tracking-wide text-muted-foreground">
-        <th className="px-4 pt-3 font-medium">Zařízení</th>
+    <thead className="hlavicka-tabulky">
+      <tr>
+        {/* Průhledný pruh téže šířky, jakou má v řádcích pruh stavu - jinak by
+            se názvy sloupců rozešly s buňkami pod sebou o čtyři pixely. */}
+        <th className="border-l-4 border-l-transparent px-4 pt-3 font-medium">Zařízení</th>
         <th className="px-4 pt-3 font-medium">Inventární číslo</th>
         <th className="px-4 pt-3 font-medium">Typ</th>
         <th className="px-4 pt-3 font-medium">Umístění</th>
@@ -162,8 +164,11 @@ export function HlavickaTabulkyZarizeni({
       {/* Filtr je přímo v hlavičce, aby bylo vidět, který sloupec zužuje.
           Podmínky platí zároveň - dá se tak dojít ke stroji postupně, ne jen
           jedním hledáním přes všechno. */}
-      <tr className="normal-case">
-        <th className="px-4 pb-3 pt-2 font-normal">
+      {/* Druhá řada hlavičky nese filtr, ne názvy sloupců, takže se z ní musí
+          sazba návěští sundat celá - jinak by se v ní filtrovací pole vykreslila
+          zúženě a s prostrkáním. */}
+      <tr className="normal-case tracking-normal [font-stretch:100%]">
+        <th className="border-l-4 border-l-transparent px-4 pb-3 pt-2 font-normal">
           <Input
             form={idFormulare}
             name="nazev"

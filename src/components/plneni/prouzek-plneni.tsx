@@ -36,9 +36,11 @@ export function ProuzekPlneni({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-label={`Plnění ${procenta} procent`}
-        className={`h-2 overflow-hidden rounded-full bg-muted ${sirka}`}
+        // Hranatý, ne pilulka: je to odečet na stupnici, ne ozdoba. Rýska
+        // kolem drží proužek na místě i tam, kde je plnění blízko nule.
+        className={`h-2.5 overflow-hidden rounded-[2px] border border-border bg-muted ${sirka}`}
       >
-        <div className={`h-full rounded-full ${barva}`} style={{ width: `${procenta}%` }} />
+        <div className={`h-full ${barva}`} style={{ width: `${procenta}%` }} />
       </div>
 
       <span className="cislice-tabulkove w-12 text-right text-sm font-medium">

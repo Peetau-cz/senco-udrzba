@@ -50,14 +50,24 @@ export function BocniMenu({ polozky }: { polozky: PolozkaMenu[] }) {
             href={polozka.href}
             aria-current={jeAktivni ? 'page' : undefined}
             className={cn(
-              'flex min-h-dotyk items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors',
-              // Aktivní položka nese firemní fialovou. Zelená patří akcím -
-              // kdyby ji měla i navigace, tlačítko „Uložit" by splynulo s menu.
+              'relative flex min-h-dotyk items-center gap-3 rounded-md pl-4 pr-3 text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navigace-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-navigace',
+              // Lišta je celá fialová, takže fialovou už nejde nic vyznačit.
+              // Značku „jsi tady" nese druhá firemní barva: zelený pruh u hrany
+              // plus světlejší plocha. Zelená tady neznamená akci, ale polohu -
+              // je to jediné místo v aplikaci, kde má tuhle roli, a plyne to
+              // z toho, že pod ní není bílé pozadí, ale fialové.
               jeAktivni
-                ? 'bg-zvyrazneni text-zvyrazneni-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                ? 'bg-white/15 text-navigace-foreground'
+                : 'text-navigace-tlumene hover:bg-white/10 hover:text-navigace-foreground',
             )}
           >
+            {jeAktivni ? (
+              <span
+                aria-hidden="true"
+                className="absolute inset-y-2 left-0 w-1 rounded-full bg-znacka-zelena"
+              />
+            ) : null}
             <Ikona className="size-5 shrink-0" />
             <span>{polozka.popisek}</span>
           </Link>

@@ -55,7 +55,7 @@ export default async function StrankaTypu() {
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b text-left text-muted-foreground">
+              <thead className="hlavicka-tabulky">
                 <tr>
                   <th className="px-4 py-3 font-medium">Typ</th>
                   <th className="px-4 py-3 font-medium">Oblast</th>

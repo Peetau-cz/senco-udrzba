@@ -16,12 +16,18 @@ export default async function AplikacniLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-svh">
-      <aside className="hidden w-60 shrink-0 border-r bg-card md:block">
-        <div className="space-y-2 border-b px-4 py-4">
-          <LogoSenco vyska={36} />
-          <div>
-            <p className="font-semibold">SENCO Údržba</p>
-            <p className="text-xs text-muted-foreground">Příbram</p>
+      {/* Lišta je celá ve firemní fialové - pravidlo „fialová = navigace"
+          uplatněné na plochu, ne na jednu položku. Logo na ní ale nemůže ležet
+          přímo: je samo fialové a zmizelo by. Sedí proto na bílém štítku,
+          jako nýtovaný výrobní štítek na boku stroje. */}
+      <aside className="hidden w-60 shrink-0 bg-navigace text-navigace-foreground md:block">
+        <div className="p-3">
+          <div className="flex items-center gap-3 rounded-md bg-card p-3 text-card-foreground">
+            <LogoSenco vyska={28} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-tight">SENCO Údržba</p>
+              <p className="navesti pt-0.5">Příbram</p>
+            </div>
           </div>
         </div>
         <BocniMenu polozky={polozky} />

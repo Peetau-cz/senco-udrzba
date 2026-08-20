@@ -69,7 +69,8 @@ export default async function StrankaUmisteni() {
                 <div className="min-w-0">
                   <CardTitle className="text-base">{hala.nazev}</CardTitle>
                   <CardDescription>
-                    <span className="cislice-tabulkove">{hala.kod}</span> · {popisPoctu(hala)}
+                    <span className="stitek-razeny">{hala.kod}</span>{' '}
+                    <span className="pl-1">{popisPoctu(hala)}</span>
                   </CardDescription>
                 </div>
 
@@ -103,8 +104,8 @@ export default async function StrankaUmisteni() {
                         ) : (
                           <span className="font-medium">{provoz.nazev}</span>
                         )}
-                        <p className="text-xs text-muted-foreground">
-                          <span className="cislice-tabulkove">{provoz.kod}</span> ·{' '}
+                        <p className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
+                          <span className="stitek-razeny">{provoz.kod}</span>
                           {popisPoctu(provoz)}
                         </p>
                       </div>

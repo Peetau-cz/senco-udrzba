@@ -42,10 +42,12 @@ export function Dlazdice({
       <CardContent className="pt-6">
         <div className="flex items-center gap-2">
           <Ikona aria-hidden="true" className={`h-4 w-4 shrink-0 ${barvaIkony}`} />
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">{popisek}</p>
+          <p className="navesti">{popisek}</p>
         </div>
-        <p className="cislice-tabulkove mt-2 text-3xl font-semibold">{hodnota}</p>
-        {poznamka ? <p className="mt-1 text-sm text-muted-foreground">{poznamka}</p> : null}
+        {/* Odečet, ne nadpis: číslo je to jediné, co se z dlaždice čte přes halu,
+            tak dostane celou váhu a raženou sazbu. Věta pod ním zůstává drobná. */}
+        <p className="cislice-tabulkove mt-2 text-4xl font-semibold leading-none">{hodnota}</p>
+        {poznamka ? <p className="mt-2 text-sm text-muted-foreground">{poznamka}</p> : null}
       </CardContent>
     </Card>
   )

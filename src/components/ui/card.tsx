@@ -5,7 +5,9 @@ const Card = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('rounded-lg border bg-card text-card-foreground shadow-sm', className)}
+      // Bez stínu: karta se od podkladu odděluje rýskou a tím, že je bílá na
+      // dílenské šedi. Stín pod ní by dělal měkký plovoucí panel, ne štítek.
+      className={cn('rounded-md border bg-card text-card-foreground', className)}
       {...props}
     />
   ),
