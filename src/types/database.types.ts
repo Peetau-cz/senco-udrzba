@@ -959,6 +959,19 @@ export type Database = {
         }
         Relationships: []
       }
+      /** Migrace 0019. Vyřazené stroje pohled vynechává. */
+      v_pripravenost_zarizeni: {
+        Row: {
+          zarizeni_id: string
+          oblast_id: string
+          sablon: number
+          /** Jen aktivní úkony — vyřazené z matice se nepočítají. */
+          ukonu_celkem: number
+          ukonu_bez_terminu: number
+          stav_planu: 'bez_sablony' | 'bez_ukonu' | 'bez_terminu' | 'ok'
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ma_roli: {

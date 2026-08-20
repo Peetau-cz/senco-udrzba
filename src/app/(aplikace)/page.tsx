@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { CalendarClock, CheckCircle2, Percent, TriangleAlert } from 'lucide-react'
+import { CalendarClock, CalendarOff, CheckCircle2, Percent, TriangleAlert } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dlazdice } from '@/components/plneni/dlazdice'
 import { ProuzekPlneni } from '@/components/plneni/prouzek-plneni'
 import { PruhTerminu, ZnackaTerminu } from '@/components/plan/znacka-terminu'
 import { maPravo } from '@/lib/auth/opravneni'
+import { idsZarizeniSNedodelanymPlanem } from '@/lib/zarizeni/dotazy'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { formatDatumCas } from '@/lib/datum'
 import { celeJmeno } from '@/lib/plan/dotazy'
@@ -40,11 +41,12 @@ export default async function Dashboard() {
   const obdobi = zacatekMesice(dnes)
   const smiProvadetUdrzbu = maPravo(uzivatel.role, 'provedeni', 'zapis')
 
-  const [dnesniPlan, poTerminu, plneni, posledni] = await Promise.all([
+  const [dnesniPlan, poTerminu, plneni, posledni, bezPlanu] = await Promise.all([
     nactiDnesniPlan(),
     nactiPoTerminu(),
     nactiPlneni(obdobi),
     nactiPosledniProvedene(),
+    idsZarizeniSNedodelanymPlanem(),
   ])
 
   const souhrn = souhrnPlneni(plneni)
@@ -61,7 +63,7 @@ export default async function Dashboard() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Dlazdice
           popisek="Dnes"
           hodnota={dnesniPlan.length}
@@ -93,6 +95,25 @@ export default async function Dashboard() {
           }
           ikona={Percent}
           odstin="klid"
+        />
+        {/* Pátá dlaždice nemluví o provedené údržbě, ale o té, která se nikdy
+            nenaplánuje: stroj bez šablony nebo s úkony bez termínu z plánovače
+            vypadne tiše. Je to jediné číslo na dashboardu, které roste tím, že
+            se něco NEudělalo v evidenci, ne v dílně.
+
+            Počítá jen provozuschopné stroje, stejně jako seznam, do kterého
+            dlaždice vede - kdyby se čísla rozešla, vypadalo by to jako chyba. */}
+        <Dlazdice
+          popisek="Bez plánu"
+          hodnota={bezPlanu.length}
+          poznamka={
+            bezPlanu.length === 0
+              ? 'všechny stroje v provozu mají plán'
+              : 'strojů v provozu se nenaplánuje'
+          }
+          ikona={CalendarOff}
+          odstin={bezPlanu.length > 0 ? 'poterminu' : 'splneno'}
+          odkaz={bezPlanu.length > 0 ? '/zarizeni?plan=nedodelany' : undefined}
         />
       </div>
 

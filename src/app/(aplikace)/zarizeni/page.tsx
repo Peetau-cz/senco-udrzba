@@ -4,11 +4,12 @@ import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { HlavickaTabulkyZarizeni } from '@/components/zarizeni/hlavicka-tabulky-zarizeni'
+import { ZnackaPlanu } from '@/components/zarizeni/znacka-planu'
 import { pruhStavu, ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { cestaUmisteni, idsUmisteniProFiltr } from '@/lib/umisteni/zobrazeni'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
-import { nactiCiselniky, nactiSeznamZarizeni } from '@/lib/zarizeni/dotazy'
+import { nactiCiselniky, nactiPripravenost, nactiSeznamZarizeni } from '@/lib/zarizeni/dotazy'
 import { STAVY_ZARIZENI } from '@/lib/zarizeni/formular'
 
 /**
@@ -52,6 +53,7 @@ export default async function StrankaZarizeni({
   const stav = jedna(parametry, 'stav')
   const hledanyNazev = jedna(parametry, 'nazev')
   const hledaneCislo = jedna(parametry, 'inv')
+  const plan = jedna(parametry, 'plan')
 
   const oblast = uzivatel.oblasti.find((o) => o.kod === kodOblasti)
   const typ = ciselniky.typy.find((t) => t.kod === kodTypu)
@@ -63,18 +65,25 @@ export default async function StrankaZarizeni({
     nazev: hledanyNazev,
     inventarniCislo: hledaneCislo,
     umisteniIds: idsUmisteniProFiltr(ciselniky.umisteni, kodUmisteni),
+    planNedodelany: plan === 'nedodelany',
   })
+
+  // Až po seznamu: stav plánu se dotahuje jen pro stroje, které se opravdu
+  // vypíšou, ne pro celou evidenci.
+  const pripravenost = await nactiPripravenost(zarizeni.map((z) => z.id))
 
   const smiSpravovat = maPravo(uzivatel.role, 'zarizeni', 'zapis')
 
   // Oblast se schválně nepočítá: tu drží přepínač v hlavičce, ne filtr v
   // tabulce. Kdyby ji „Zrušit filtr" mazalo taky, uživatel by nečekaně vypadl
   // z oblasti, kterou si nastavil úplně jinde.
-  const jeFiltrovano = Boolean(kodTypu || kodUmisteni || stav || hledanyNazev || hledaneCislo)
+  const jeFiltrovano = Boolean(
+    kodTypu || kodUmisteni || stav || hledanyNazev || hledaneCislo || plan,
+  )
 
   // Prázdný stav se roztahuje přes všechny sloupce, ať zpráva stojí uprostřed
   // tabulky a ne v prvním sloupci.
-  const pocetSloupcu = smiSpravovat ? 7 : 6
+  const pocetSloupcu = smiSpravovat ? 8 : 7
 
   return (
     <div className="space-y-6">
@@ -130,6 +139,7 @@ export default async function StrankaZarizeni({
                 inv: hledaneCislo,
                 typ: kodTypu,
                 umisteni: kodUmisteni,
+                plan,
                 stav,
               }}
               typy={ciselniky.typy.map((t) => ({ id: t.id, kod: t.kod, nazev: t.nazev }))}
@@ -220,6 +230,9 @@ export default async function StrankaZarizeni({
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ZnackaPlanu pripravenost={pripravenost.get(z.id)} />
                     </td>
                     <td className="px-4 py-3">
                       <ZnackaStavu stav={z.stav} />
