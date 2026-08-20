@@ -3,6 +3,7 @@
 import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
+import { FormularSPotvrzenim } from '@/components/ui/potvrzeni'
 import type { StavKroku } from '@/app/(aplikace)/zakazky/[id]/actions'
 
 function Tlacitko({
@@ -83,9 +84,20 @@ export function PatickaZakazky({
             />
           </form>
 
-          <form action={dokonciFormAction}>
+          {/* Dokončení se ptá: zakázka se tím uzavře a zapíše do historie.
+              Otázka rovnou připomene, co ještě zbývá vyřídit. */}
+          <FormularSPotvrzenim
+            akce={dokonciFormAction}
+            otazka="Dokončit údržbu?"
+            popis={
+              zbyva > 0
+                ? `Zbývá vyřídit ${zbyva} ${zbyva === 1 ? 'krok' : zbyva <= 4 ? 'kroky' : 'kroků'}. Dokud nejsou vyřízené, zakázka se nedokončí.`
+                : 'Zakázka se uzavře a zapíše do historie stroje. Zpět už se needituje.'
+            }
+            potvrdit="Dokončit"
+          >
             <Tlacitko popisek="Dokončit údržbu" probiha="Dokončuji…" />
-          </form>
+          </FormularSPotvrzenim>
         </div>
       </div>
     </div>
