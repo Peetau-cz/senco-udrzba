@@ -8,7 +8,7 @@ import type { PrihlasenyUzivatel } from '@/lib/auth/session'
 
 export function Hlavicka({ uzivatel }: { uzivatel: PrihlasenyUzivatel }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-4 py-3">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3">
       <Suspense fallback={null}>
         <PrepinacOblasti oblasti={uzivatel.oblasti} />
       </Suspense>
