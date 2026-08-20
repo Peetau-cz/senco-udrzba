@@ -62,7 +62,7 @@ export function TerminyPlanu({
 
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
-          <thead className="border-b bg-secondary/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="hlavicka-tabulky">
             <tr>
               <th className="px-4 py-3 font-medium">Úkon</th>
               <th className="px-4 py-3 font-medium">Interval</th>

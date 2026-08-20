@@ -30,3 +30,28 @@ export function ZnackaTerminu({ termin, dnes }: { termin: string | null; dnes: s
     </span>
   )
 }
+
+/**
+ * Pruh stavu u levé hrany řádku.
+ *
+ * Doplněk značky, ne náhrada. Ve výpisu, kde se řádky čtou shora dolů, se stav
+ * pozná dřív z barevné hrany než ze štítku na konci řádku - oko po pruzích
+ * sjede, po štítcích musí skákat. Text zůstává ve značce, protože barva sama
+ * nic neznamená a v tisku zmizí.
+ */
+const PRUH: Record<StavTerminu, string> = {
+  chybi: 'bg-stav-poterminu',
+  po_terminu: 'bg-stav-poterminu',
+  dnes: 'bg-stav-dnes',
+  brzy: 'bg-border',
+  pozdeji: 'bg-border',
+}
+
+export function PruhTerminu({ termin, dnes }: { termin: string | null; dnes: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`w-1 shrink-0 self-stretch rounded-[1px] ${PRUH[stavTerminu(termin, dnes)]}`}
+    />
+  )
+}

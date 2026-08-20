@@ -57,7 +57,7 @@ export function NahledMatice({ ukony }: { ukony: Ukon[] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <thead className="hlavicka-tabulky">
           <tr>
             <th className="py-2 pr-3 font-medium">#</th>
             <th className="py-2 pr-3 font-medium">Úkon</th>

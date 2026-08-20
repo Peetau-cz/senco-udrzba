@@ -1,10 +1,10 @@
 import Link from 'next/link'
-import { ChevronRight, Cog, MapPin, PackageSearch, Plus } from 'lucide-react'
+import { ChevronRight, Cog, MapPin, PackageSearch, Plus, Tag } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { HlavickaTabulkyZarizeni } from '@/components/zarizeni/hlavicka-tabulky-zarizeni'
-import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
+import { pruhStavu, ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { cestaUmisteni, idsUmisteniProFiltr } from '@/lib/umisteni/zobrazeni'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
@@ -117,8 +117,8 @@ export default async function StrankaZarizeni({
         {kodOblasti ? <input type="hidden" name="oblast" value={kodOblasti} /> : null}
       </form>
 
-      {/* `overflow-hidden` kvůli podbarvené hlavičce - bez něj by přetekla
-          přes zaoblené rohy karty. */}
+      {/* `overflow-hidden` kvůli pruhům stavu u levé hrany řádků - bez něj by
+          přetekly přes zaoblené rohy karty. */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -172,7 +172,9 @@ export default async function StrankaZarizeni({
                     key={z.id}
                     className="group relative cursor-pointer border-b transition-colors last:border-0 focus-within:bg-accent hover:bg-accent"
                   >
-                    <td className="px-4 py-3">
+                    {/* Pruh stavu u hrany řádku: sloupec strojů se dá přejet
+                        očima a vidět, co je v opravě, bez čtení každého řádku. */}
+                    <td className={`border-l-4 px-4 py-3 ${pruhStavu(z.stav)}`}>
                       <Link
                         href={`/zarizeni/${z.id}`}
                         className="rounded-sm font-medium underline-offset-4 after:absolute after:inset-0 hover:underline focus-visible:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -185,14 +187,21 @@ export default async function StrankaZarizeni({
                         </p>
                       ) : null}
                     </td>
-                    <td className="cislice-tabulkove px-4 py-3">
-                      {z.inventarni_cislo ?? <span className="text-muted-foreground">—</span>}
+                    <td className="px-4 py-3">
+                      {z.inventarni_cislo ? (
+                        <span className="stitek-razeny">{z.inventarni_cislo}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
-                    {/* Typ je kategorie, ne volný text - štítek zvládne oko
-                        seskupit rychleji než holé slovo v řádku. */}
+                    {/* Typ a umístění jsou obojí zařazení stroje, ne jeho stav.
+                        Čtou se proto stejně: firemní ikona a za ní text v téže
+                        velikosti jako název. Dokud byl typ štítkem o dvě velikosti
+                        menším, tvářil se řádek, že je poskládaný ze tří písem. */}
                     <td className="px-4 py-3">
                       {z.typ?.nazev ? (
-                        <span className="inline-flex whitespace-nowrap rounded-md bg-secondary px-2 py-1 text-xs font-medium text-secondary-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          <Tag aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-zvyrazneni" />
                           {z.typ.nazev}
                         </span>
                       ) : (

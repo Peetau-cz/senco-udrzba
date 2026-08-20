@@ -74,7 +74,7 @@ export default async function DetailOblasti({
           <Udaj popisek="Po termínu" hodnota={oblast.poTerminu} zvyraznit={oblast.poTerminu > 0} />
           <Udaj popisek="Nešlo provést" hodnota={oblast.neprovedeno} tlumit />
           <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Plnění</p>
+            <p className="navesti">Plnění</p>
             <div className="mt-2">
               <ProuzekPlneni splneno={oblast.splneno} celkem={oblast.celkem} sirka="w-24" />
             </div>
@@ -202,7 +202,7 @@ function Udaj({
 }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">{popisek}</p>
+      <p className="navesti">{popisek}</p>
       <p
         className={`cislice-tabulkove mt-2 text-2xl font-semibold ${
           zvyraznit ? 'text-stav-poterminu' : tlumit ? 'text-muted-foreground' : ''

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dlazdice } from '@/components/plneni/dlazdice'
 import { ProuzekPlneni } from '@/components/plneni/prouzek-plneni'
-import { ZnackaTerminu } from '@/components/plan/znacka-terminu'
+import { PruhTerminu, ZnackaTerminu } from '@/components/plan/znacka-terminu'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
 import { formatDatumCas } from '@/lib/datum'
@@ -226,19 +226,26 @@ function SeznamZakazek({
     <>
       <ul className="divide-y">
         {zakazky.map((z) => (
-          <li key={z.zakazka_id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-            <div className="min-w-0">
-              <Link
-                href={`/zakazky/${z.zakazka_id}`}
-                className="text-sm font-medium underline-offset-4 hover:underline"
-              >
-                {z.zarizeni_nazev}
-              </Link>
-              <span className="block text-xs text-muted-foreground">
-                {z.profese_nazev} · {z.vyrizeno} z {z.kroku} hotovo
-              </span>
+          <li key={z.zakazka_id} className="flex items-stretch gap-3 py-2">
+            <PruhTerminu termin={z.planovany_termin} dnes={dnes} />
+
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Link
+                  href={`/zakazky/${z.zakazka_id}`}
+                  className="text-sm font-medium underline-offset-4 hover:underline"
+                >
+                  {z.zarizeni_nazev}
+                </Link>
+                <span className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-muted-foreground">
+                  {z.inventarni_cislo ? (
+                    <span className="stitek-razeny">{z.inventarni_cislo}</span>
+                  ) : null}
+                  {z.profese_nazev} · {z.vyrizeno} z {z.kroku} hotovo
+                </span>
+              </div>
+              <ZnackaTerminu termin={z.planovany_termin} dnes={dnes} />
             </div>
-            <ZnackaTerminu termin={z.planovany_termin} dnes={dnes} />
           </li>
         ))}
       </ul>

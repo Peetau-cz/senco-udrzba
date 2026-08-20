@@ -343,7 +343,7 @@ async function ZalozkaVerze({
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b bg-secondary/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <thead className="hlavicka-tabulky">
               <tr>
                 <th className="px-4 py-3 font-medium">Verze</th>
                 <th className="px-4 py-3 font-medium">Stav</th>
