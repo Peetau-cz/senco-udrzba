@@ -7,6 +7,7 @@
  * druhá pravda, kterou by nikdo neudržoval (zásada R1).
  */
 
+import type { Database } from '@/types/database.types'
 import { NADOBA_ZARIZENI, odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { nactiNabidkuUmisteni } from '@/lib/umisteni/dotazy'
@@ -51,6 +52,8 @@ export type FiltrZarizeni = {
   inventarniCislo?: string
   /** Hala se rozpadá na sebe a své provozy, viz `idsUmisteniProFiltr`. */
   umisteniIds?: string[]
+  /** Jen stroje, kterým se údržba nenaplánuje - viz `nactiPripravenost`. */
+  planNedodelany?: boolean
 }
 
 /**
@@ -87,11 +90,78 @@ export async function nactiSeznamZarizeni(filtr: FiltrZarizeni) {
   const inventarniCislo = filtr.inventarniCislo ? ocistiHledani(filtr.inventarniCislo) : ''
   if (inventarniCislo) dotaz = dotaz.ilike('inventarni_cislo', `%${inventarniCislo}%`)
 
+  // Stav plánu je v pohledu, ne ve sloupci zařízení, takže se na něj nedá
+  // filtrovat v témže dotazu. Nejdřív se tedy vytáhnou identifikátory a teprve
+  // ty zúží seznam. Strojů jsou desítky, takže na délce adresy nesejde; kdyby
+  // jich byly tisíce, patřil by ten filtr do pohledu jako sloupec.
+  if (filtr.planNedodelany) {
+    const ids = await idsZarizeniSNedodelanymPlanem()
+    // Prázdný výsledek znamená „nic neodpovídá", ne „nefiltrovat" - proto se
+    // vrací prázdný seznam, ne všechny stroje.
+    if (ids.length === 0) return []
+    dotaz = dotaz.in('id', ids)
+  }
+
   const { data, error } = await dotaz
 
   if (error) throw new Error(`Nepodařilo se načíst zařízení: ${error.message}`)
 
   return data ?? []
+}
+
+export type StavPlanu = Database['public']['Views']['v_pripravenost_zarizeni']['Row']['stav_planu']
+
+export type PripravenostZarizeni = {
+  stavPlanu: StavPlanu
+  ukonuCelkem: number
+  ukonuBezTerminu: number
+}
+
+/**
+ * Připravenost strojů, klíčem je identifikátor zařízení.
+ *
+ * Vlastní dotaz, ne vnořený výběr: pohled `v_pripravenost_zarizeni` nemá na
+ * `zarizeni` cizí klíč, takže ho PostgREST nezanoří. Vyřazené stroje v pohledu
+ * nejsou (migrace 0019) a v mapě proto chybí - volající je bere jako „nekontroluje se".
+ */
+export async function nactiPripravenost(
+  zarizeniIds: string[],
+): Promise<Map<string, PripravenostZarizeni>> {
+  if (zarizeniIds.length === 0) return new Map()
+
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data, error } = await supabase
+    .from('v_pripravenost_zarizeni')
+    .select('zarizeni_id, stav_planu, ukonu_celkem, ukonu_bez_terminu')
+    .in('zarizeni_id', zarizeniIds)
+
+  if (error) throw new Error(`Nepodařilo se načíst připravenost strojů: ${error.message}`)
+
+  return new Map(
+    (data ?? []).map((r) => [
+      r.zarizeni_id,
+      {
+        stavPlanu: r.stav_planu,
+        ukonuCelkem: r.ukonu_celkem,
+        ukonuBezTerminu: r.ukonu_bez_terminu,
+      },
+    ]),
+  )
+}
+
+/** Stroje, kterým se údržba nenaplánuje. Podklad pro filtr i dlaždici. */
+export async function idsZarizeniSNedodelanymPlanem(): Promise<string[]> {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data, error } = await supabase
+    .from('v_pripravenost_zarizeni')
+    .select('zarizeni_id')
+    .neq('stav_planu', 'ok')
+
+  if (error) throw new Error(`Nepodařilo se načíst stav plánů: ${error.message}`)
+
+  return (data ?? []).map((r) => r.zarizeni_id)
 }
 
 export async function nactiZarizeni(id: string) {

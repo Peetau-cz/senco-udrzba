@@ -16,8 +16,10 @@ import { Select } from '@/components/ui/select'
  * vzniklo by tím druhé místo, kde se rozhoduje, co uživatel vidí; pravidlo R1
  * z návrhu (jedna pravda) platí i tady.
  *
- * Formulář zůstává: bez javascriptu se filtr odešle lupou nebo Enterem a
- * stránka funguje dál. Živé filtrování je nadstavba, ne podmínka.
+ * Formulář zůstává: bez javascriptu se filtr odešle lupou a stránka funguje
+ * dál. Živé filtrování je nadstavba, ne podmínka. Lupa se ale ukazuje jen
+ * tehdy, když má co dělat - jakmile se stránka oživí, filtruje se samo při
+ * psaní a tlačítko by bylo ovládací prvek, který nic nespouští.
  */
 
 /**
@@ -34,6 +36,7 @@ export type HodnotyFiltru = {
   inv?: string
   typ?: string
   umisteni?: string
+  plan?: string
   stav?: string
 }
 
@@ -73,6 +76,12 @@ export function HlavickaTabulkyZarizeni({
     },
     [],
   )
+
+  // Doběhne až po oživení stránky v prohlížeči, na serveru zůstane false.
+  // Tím se pozná, jestli je javascript k dispozici - a podle toho, jestli je
+  // tlačítko lupy k něčemu, nebo je to jen zbytečný ovládací prvek navíc.
+  const [jeZiva, setJeZiva] = useState(false)
+  useEffect(() => setJeZiva(true), [])
 
   function adresa(dalsi: HodnotyFiltru): string {
     const parametry = new URLSearchParams()
@@ -124,6 +133,7 @@ export function HlavickaTabulkyZarizeni({
         <th className="px-4 pt-3 font-medium">Inventární číslo</th>
         <th className="px-4 pt-3 font-medium">Typ</th>
         <th className="px-4 pt-3 font-medium">Umístění</th>
+        <th className="px-4 pt-3 font-medium">Plán</th>
         <th className="px-4 pt-3 font-medium">Stav</th>
         {/* Tlačítka sedí přes obě řádky hlavičky vpravo. Sloupec s akcí se navíc
             vůbec nevykreslí těm, kdo evidenci měnit nesmějí - prázdný sloupec by
@@ -135,16 +145,39 @@ export function HlavickaTabulkyZarizeni({
         >
           <span className="sr-only">Akce</span>
           <div className="flex justify-end gap-2">
-            <Button type="submit" form={idFormulare} size="icon" variant="secondary">
-              {/* Kolečko se točí, dokud server nevrátí zúžený seznam. Bez něj
-                  by u pomalé sítě vypadala tabulka jako zamrzlá. */}
-              {ceka ? (
-                <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search aria-hidden="true" className="h-4 w-4" />
-              )}
+            {/* Lupa je záchranná síť pro prohlížeč bez javascriptu. Tam se filtr
+                musí čím odeslat a Enter na to nestačí: formulář má dvě textová
+                pole a implicitní odeslání funguje jen u jediného pole.
+
+                Jakmile se stránka oživí, filtruje se samo při psaní a tlačítko
+                už nemá co spustit - schová se tedy pro oko a zůstane jen pro
+                odečítač obrazovky, aby Enter dál fungoval i jemu. */}
+            <Button
+              type="submit"
+              form={idFormulare}
+              size="icon"
+              variant="secondary"
+              className={jeZiva ? 'sr-only' : ''}
+            >
+              <Search aria-hidden="true" className="h-4 w-4" />
               <span className="sr-only">Vyhledat</span>
             </Button>
+
+            {/* Místo si drží pořád, i když se zrovna netočí - jinak by ostatní
+                tlačítka poskočila při každém písmenu. Kolečko se točí, dokud
+                server nevrátí zúžený seznam; bez něj by u pomalé sítě vypadala
+                tabulka jako zamrzlá. */}
+            <span aria-live="polite" className="flex size-10 items-center justify-center">
+              {ceka ? (
+                <>
+                  <Loader2
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin text-muted-foreground"
+                  />
+                  <span className="sr-only">Filtruji…</span>
+                </>
+              ) : null}
+            </span>
             {jeFiltrovano ? (
               <Button asChild size="icon" variant="ghost">
                 {/* Odkaz zůstává odkazem, aby fungoval i bez javascriptu.
@@ -226,6 +259,20 @@ export function HlavickaTabulkyZarizeni({
                 ))}
               </optgroup>
             ))}
+          </Select>
+        </th>
+        <th className="px-4 pb-3 pt-2 font-normal">
+          {/* Jen dvě volby, a obě záporné. „Plán je v pořádku" filtrovat nejde
+              schválně - nikdo nehledá stroje, se kterými není co dělat. */}
+          <Select
+            form={idFormulare}
+            name="plan"
+            value={volby.plan ?? ''}
+            onChange={(e) => zmenVolbu({ plan: e.target.value })}
+            aria-label="Filtrovat podle stavu plánu"
+          >
+            <option value="">Plán: vše</option>
+            <option value="nedodelany">Nedodělaný plán</option>
           </Select>
         </th>
         <th className="px-4 pb-3 pt-2 font-normal">
