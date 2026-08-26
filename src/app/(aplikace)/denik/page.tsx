@@ -255,7 +255,14 @@ export default async function StrankaDenik({
                 zapisy.map((zapis) => (
                   <tr key={zapis.id} className="border-b transition-colors last:border-0 hover:bg-accent">
                     <td className="whitespace-nowrap px-4 py-3">
-                      {formatDatumCas(zapis.provedeno_at)}
+                      {/* Odkaz nese datum, ne slovo „detail" - pro odečítač
+                          obrazovky je řada stejných „detailů" k ničemu. */}
+                      <Link
+                        href={`/denik/${zapis.id}`}
+                        className="font-medium underline-offset-4 hover:underline"
+                      >
+                        {formatDatumCas(zapis.provedeno_at)}
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       {zapis.stroj ? (

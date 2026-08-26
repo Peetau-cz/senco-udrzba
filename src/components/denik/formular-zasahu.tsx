@@ -19,12 +19,12 @@ export type OsobaVNabidce = {
   prijmeni: string
 }
 
-function TlacitkoZapsat() {
+function TlacitkoZapsat({ popisek }: { popisek: string }) {
   const { pending } = useFormStatus()
 
   return (
     <Button type="submit" size="dotyk" disabled={pending}>
-      {pending ? 'Zapisuji…' : 'Zapsat zásah'}
+      {pending ? 'Ukládám…' : popisek}
     </Button>
   )
 }
@@ -55,6 +55,11 @@ export function FormularZasahu({
   vychoziZarizeniId,
   vychoziCas,
   vychoziProvedlId,
+  vychoziDruhId = '',
+  vychoziPopis = '',
+  vychoziDoba = '',
+  popisekAkce = 'Zapsat zásah',
+  nabidnoutFotku = true,
 }: {
   akce: (predchozi: StavZasahu, formData: FormData) => Promise<StavZasahu>
   stroje: StrojVNabidce[]
@@ -63,9 +68,15 @@ export function FormularZasahu({
   vychoziZarizeniId?: string
   vychoziCas: string
   vychoziProvedlId: string
+  vychoziDruhId?: string
+  vychoziPopis?: string
+  vychoziDoba?: string
+  popisekAkce?: string
+  /** Při opravě ne: fotky se u hotového zápisu přidávají a mažou samostatně. */
+  nabidnoutFotku?: boolean
 }) {
   const [stav, formAction] = useActionState<StavZasahu, FormData>(akce, {})
-  const [doba, setDoba] = useState('')
+  const [doba, setDoba] = useState(vychoziDoba)
 
   const chyby = stav.chybyPoli ?? {}
 
@@ -92,7 +103,7 @@ export function FormularZasahu({
 
         <div className="space-y-2">
           <Label htmlFor="druh_zasahu_id">Druh zásahu</Label>
-          <Select id="druh_zasahu_id" name="druh_zasahu_id" defaultValue="" required>
+          <Select id="druh_zasahu_id" name="druh_zasahu_id" defaultValue={vychoziDruhId} required>
             <option value="">— vyberte druh —</option>
             {druhy.map((druh) => (
               <option key={druh.id} value={druh.id}>
@@ -112,6 +123,7 @@ export function FormularZasahu({
           rows={3}
           maxLength={MAX_DELKA_POPISU}
           placeholder="Vyměněna žárovka v panelu u dveří."
+          defaultValue={vychoziPopis}
           required
         />
         <p className="text-xs text-muted-foreground">
@@ -181,26 +193,28 @@ export function FormularZasahu({
         <Chyba text={chyby.doba_trvani_min} />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="fotka">Fotka</Label>
-        <input
-          id="fotka"
-          name="fotka"
-          type="file"
-          accept={PRIJIMANE_PRIPONY_FOTEK}
-          capture="environment"
-          className="flex h-dotyk w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <p className="text-xs text-muted-foreground">
-          Nepovinná. Na tabletu se otevře rovnou fotoaparát.
-        </p>
-        <Chyba text={chyby.fotka} />
-      </div>
+      {nabidnoutFotku ? (
+        <div className="space-y-2">
+          <Label htmlFor="fotka">Fotka</Label>
+          <input
+            id="fotka"
+            name="fotka"
+            type="file"
+            accept={PRIJIMANE_PRIPONY_FOTEK}
+            capture="environment"
+            className="flex h-dotyk w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <p className="text-xs text-muted-foreground">
+            Nepovinná. Na tabletu se otevře rovnou fotoaparát.
+          </p>
+          <Chyba text={chyby.fotka} />
+        </div>
+      ) : null}
 
       <Chyba text={stav.chyba} />
 
       <div className="flex flex-wrap items-center gap-3">
-        <TlacitkoZapsat />
+        <TlacitkoZapsat popisek={popisekAkce} />
         <Button asChild variant="outline" size="dotyk">
           <Link href="/denik">Zpět na deník</Link>
         </Button>

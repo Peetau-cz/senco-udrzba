@@ -16,9 +16,12 @@ parametry, strom umístění.
 **M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
 **M3 (plán a provedení)** hotový a schválený — plán údržby na kartě zařízení, seznam
 zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
-**M4 (dashboard a plnění)** rozpracovaný — dashboard s dnešním plánem a restancemi,
+**M4 (dashboard a plnění)** schválený — dashboard s dnešním plánem a restancemi,
 `/plneni` s rozklikem oblasti a exportem do XLSX.
-Historie zařízení na kartě záměrně chybí — doplní ji M5.
+**M5 (provozní deník a historie)** rozpracovaný — evidence neplánovaných zásahů na
+`/denik`, číselník druhů zásahu a záložka Historie na kartě stroje, kde se dokončené
+údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán údržby ani plnění
+matice neovlivňuje (zadání ř. 144).
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.

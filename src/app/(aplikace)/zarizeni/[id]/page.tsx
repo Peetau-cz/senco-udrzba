@@ -6,6 +6,7 @@ import {
   Hash,
   History,
   MapPin,
+  NotebookPen,
   Paperclip,
   SlidersHorizontal,
   Tag,
@@ -17,13 +18,15 @@ import { notFound, redirect } from 'next/navigation'
 import { OdkazZpet } from '@/components/layout/odkaz-zpet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { CasovaOsa } from '@/components/denik/casova-osa'
 import { TerminyPlanu } from '@/components/plan/terminy-planu'
 import { NahraniSouboru } from '@/components/zarizeni/nahrani-souboru'
 import { SeznamSouboru } from '@/components/zarizeni/seznam-souboru'
 import { ZnackaStavu } from '@/components/zarizeni/znacka-stavu'
 import { maPravo } from '@/lib/auth/opravneni'
 import { nactiPrihlaseneho } from '@/lib/auth/session'
-import { formatDatumCas } from '@/lib/datum'
+import { formatDatum, formatDatumCas } from '@/lib/datum'
+import { nactiHistoriiZarizeni } from '@/lib/denik/dotazy'
 import { nactiPlanZarizeni } from '@/lib/plan/dotazy'
 import { dnesVPraze } from '@/lib/plan/terminy'
 import { cestaUmisteni } from '@/lib/umisteni/zobrazeni'
@@ -55,8 +58,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
  *
  * Záložky jsou obyčejné odkazy s parametrem v adrese, ne přepínání v prohlížeči.
  * Konkrétní záložka jde tím pádem poslat kolegovi odkazem a funguje i na tabletu
- * bez javascriptu. Plán, historie a dokumenty čekají na moduly M3, M5 a na
- * dokončení M1 - jejich záložky tu jsou, aby bylo vidět, kam obsah přijde.
+ * bez javascriptu.
  */
 export default async function KartaZarizeni({
   params,
@@ -86,6 +88,7 @@ export default async function KartaZarizeni({
   // ale ptáme se na něj zvlášť - kdyby se pravidla rozešla, změní se matice
   // a nikoli tahle stránka.
   const smiPlanovat = maPravo(uzivatel.role, 'plan', 'zapis')
+  const smiZapisovatDoDeniku = maPravo(uzivatel.role, 'denik', 'zapis')
   const schema = prectiSchema(zarizeni.typ?.schema_parametru)
   const hodnoty = (zarizeni.parametry ?? {}) as HodnotyParametru
 
@@ -120,11 +123,24 @@ export default async function KartaZarizeni({
           </div>
         </div>
 
-        {smiUpravovat ? (
-          <Button asChild size="dotyk" variant="outline">
-            <Link href={`/zarizeni/${zarizeni.id}/upravit`}>Upravit</Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-3">
+          {/* Zásah se zapisuje od stroje, ne od prázdného formuláře - technik
+              stojí u mašiny a nemá ji proč hledat v seznamu podruhé. */}
+          {smiZapisovatDoDeniku ? (
+            <Button asChild size="dotyk" variant="outline">
+              <Link href={`/denik/novy?zarizeni=${zarizeni.id}`}>
+                <NotebookPen aria-hidden="true" className="h-4 w-4" />
+                Zapsat zásah
+              </Link>
+            </Button>
+          ) : null}
+
+          {smiUpravovat ? (
+            <Button asChild size="dotyk" variant="outline">
+              <Link href={`/zarizeni/${zarizeni.id}/upravit`}>Upravit</Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <nav className="flex flex-wrap gap-1 border-b" aria-label="Části karty zařízení">
@@ -188,31 +204,9 @@ export default async function KartaZarizeni({
 
           <div className="space-y-4">
             {/* Proužky používají barvy stavů údržby, ne libovolné odstíny:
-                plán je fialový jako „dnešní plán", splněná údržba zelená.
-                Až sem M3 a M5 doplní čísla, barva už bude sedět. */}
-            <Card className="border-l-4 border-l-stav-dnes">
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <CalendarClock aria-hidden="true" className="h-4 w-4 text-stav-dnes" />
-                  Nejbližší údržba
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Doplní modul M3.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-stav-splneno">
-              <CardHeader className="pb-2">
-                <CardDescription className="flex items-center gap-2">
-                  <History aria-hidden="true" className="h-4 w-4 text-stav-splneno" />
-                  Poslední údržba
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Doplní modul M5.</p>
-              </CardContent>
-            </Card>
+                plán je fialový jako „dnešní plán", hotová práce zelená. */}
+            <KartaNejblizsiUdrzby zarizeniId={zarizeni.id} />
+            <KartaNaposledy zarizeniId={zarizeni.id} />
 
             <Card>
               <CardContent className="space-y-1 pt-6 text-xs text-muted-foreground">
@@ -304,19 +298,142 @@ export default async function KartaZarizeni({
       {zalozka === 'plan' ? <ZalozkaPlan zarizeniId={zarizeni.id} smiUpravovat={smiPlanovat} /> : null}
 
       {zalozka === 'historie' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
-              Historie
-            </CardTitle>
-            <CardDescription>
-              Provedené údržby a zápisy z deníku doplní moduly M3 a M5.
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <ZalozkaHistorie zarizeniId={zarizeni.id} smiZapisovat={smiZapisovatDoDeniku} />
       ) : null}
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Historie
+// -----------------------------------------------------------------------------
+
+/**
+ * Kompletní historie stroje (zadání ř. 146-154).
+ *
+ * Obě poloviny slévá pohled v_historie_zarizeni z migrace 0023 - dokončené
+ * zakázky i zápisy z deníku. Otevřená ani zrušená zakázka tu není: první je
+ * práce, která se má teprve udělat, druhá práce, která se neudělala.
+ */
+async function ZalozkaHistorie({
+  zarizeniId,
+  smiZapisovat,
+}: {
+  zarizeniId: string
+  smiZapisovat: boolean
+}) {
+  const udalosti = await nactiHistoriiZarizeni(zarizeniId)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <History aria-hidden="true" className="h-4 w-4 text-zvyrazneni" />
+          Historie
+        </CardTitle>
+        <CardDescription>
+          Dokončené údržby a zápisy z provozního deníku v jedné časové ose, od nejnovějšího.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {udalosti.length === 0 ? (
+          <div className="py-10 text-center">
+            <History aria-hidden="true" className="mx-auto mb-4 h-10 w-10 text-zvyrazneni/40" />
+            <p className="font-medium">Se strojem se zatím nic nedělo.</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Objeví se tu dokončené údržby z plánu i neplánované zásahy.{' '}
+              {smiZapisovat ? (
+                <Link
+                  href={`/denik/novy?zarizeni=${zarizeniId}`}
+                  className="underline underline-offset-4"
+                >
+                  Zapsat zásah
+                </Link>
+              ) : null}
+            </p>
+          </div>
+        ) : (
+          <CasovaOsa udalosti={udalosti} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Nejbližší termín z plánu. Řádky bez termínu plánovač přeskakuje (migrace 0010). */
+async function KartaNejblizsiUdrzby({ zarizeniId }: { zarizeniId: string }) {
+  const radky = await nactiPlanZarizeni(zarizeniId)
+
+  const nejblizsi = radky
+    .filter((r) => r.aktivni && r.dalsiTermin)
+    .sort((a, b) => (a.dalsiTermin ?? '').localeCompare(b.dalsiTermin ?? ''))[0]
+
+  return (
+    <Card className="border-l-4 border-l-stav-dnes">
+      <CardHeader className="pb-2">
+        <CardDescription className="flex items-center gap-2">
+          <CalendarClock aria-hidden="true" className="h-4 w-4 text-stav-dnes" />
+          Nejbližší údržba
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {nejblizsi ? (
+          <>
+            <p className="font-medium">{formatDatum(nejblizsi.dalsiTermin)}</p>
+            <p className="text-sm text-muted-foreground">
+              {nejblizsi.ukon?.nazev ?? nejblizsi.sablonaNazev}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {radky.length === 0
+              ? 'Stroj nemá přiřazenou šablonu údržby.'
+              : 'Plán čeká na termíny od garanta.'}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/**
+ * Co se se strojem dělo naposledy - údržba i zásah z deníku dohromady.
+ *
+ * Karta se dřív jmenovala „Poslední údržba", ale u stroje se nikdo neptá,
+ * co bylo v plánu; ptá se, co se s ním dělo. Odpovědí je nejnovější událost
+ * z historie bez ohledu na to, ze které poloviny přišla.
+ */
+async function KartaNaposledy({ zarizeniId }: { zarizeniId: string }) {
+  const [posledni] = await nactiHistoriiZarizeni(zarizeniId, 1)
+
+  return (
+    <Card className="border-l-4 border-l-stav-splneno">
+      <CardHeader className="pb-2">
+        <CardDescription className="flex items-center gap-2">
+          <History aria-hidden="true" className="h-4 w-4 text-stav-splneno" />
+          Naposledy se dělo
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {posledni ? (
+          <>
+            <p className="font-medium">{posledni.nazev}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatDatum(posledni.kdy)} ·{' '}
+              {posledni.puvod === 'udrzba' ? 'plánovaná údržba' : 'zásah z deníku'}
+            </p>
+            <Link
+              href={`/zarizeni/${zarizeniId}?zalozka=historie`}
+              className="mt-2 inline-block text-sm underline underline-offset-4"
+            >
+              Celá historie
+            </Link>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Se strojem se zatím nic nedělo.</p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 

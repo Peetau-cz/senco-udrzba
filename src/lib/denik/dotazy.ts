@@ -7,6 +7,7 @@
  * pravda, kterou by nikdo neudržoval (zásada R1).
  */
 
+import { NADOBA_DENIKU, odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 
 /**
@@ -179,6 +180,147 @@ export async function nactiZapisyDeniku(filtr: FiltrDeniku): Promise<ZapisDeniku
     stroj: stroje.get(zapis.zarizeni_id) ?? null,
     fotek: fotky.get(zapis.id) ?? 0,
   }))
+}
+
+export type FotkaZapisu = {
+  id: string
+  storage_path: string
+  odkaz: string | null
+}
+
+export type ZapisSDetailem = ZapisDeniku & {
+  fotky: FotkaZapisu[]
+  /** Smí do zápisu přihlášený sáhnout? Odpovídá databáze, ne aplikace. */
+  smiMenit: boolean
+}
+
+/**
+ * Jeden zápis se vším, co je potřeba k jeho zobrazení i opravě.
+ *
+ * Na otázku „smím ho ještě měnit" se neodpovídá počítáním hodin v aplikaci.
+ * Ptá se funkce muze_menit_zapis_deniku z migrace 0022 - té samé, na které
+ * stojí trigger nad tabulkou i politiky nad úložištěm. Druhá pravda by se
+ * rozešla hned, jak by se okno změnilo.
+ */
+export async function nactiZapis(id: string): Promise<ZapisSDetailem | null> {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data } = await supabase
+    .from('provozni_denik')
+    .select(SLOUPCE_ZAPISU)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (!data) return null
+
+  const [stroje, fotky, smiMenit] = await Promise.all([
+    nactiStrojePodleId([data.zarizeni_id]),
+    nactiFotky(data.id),
+    supabase.rpc('muze_menit_zapis_deniku', { p_zaznam: data.id }),
+  ])
+
+  return {
+    ...data,
+    stroj: stroje.get(data.zarizeni_id) ?? null,
+    fotky,
+    fotek: fotky.length,
+    smiMenit: smiMenit.data === true,
+  }
+}
+
+async function nactiFotky(zapisId: string): Promise<FotkaZapisu[]> {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data } = await supabase
+    .from('denik_foto')
+    .select('id, storage_path')
+    .eq('zaznam_id', zapisId)
+    .order('vytvoreno_at')
+
+  const fotky = data ?? []
+  if (fotky.length === 0) return []
+
+  const odkazy = await odkazyKeStazeni(
+    NADOBA_DENIKU,
+    fotky.map((f) => f.storage_path),
+  )
+
+  return fotky.map((fotka) => ({
+    ...fotka,
+    odkaz: odkazy.get(fotka.storage_path) ?? null,
+  }))
+}
+
+export type UdalostHistorie = {
+  puvod: 'udrzba' | 'denik'
+  zaznamId: string
+  kdy: string
+  nazev: string
+  popis: string | null
+  provedl: string | null
+  zapsal: string | null
+  dobaTrvaniMin: number | null
+  ukonuCelkem: number | null
+  ukonuSplneno: number | null
+  ukonuNeprovedeno: number | null
+  fotek: number
+}
+
+/**
+ * Kompletní historie jednoho stroje (zadání ř. 146-154).
+ *
+ * Obě poloviny - dokončené údržby i zápisy z deníku - slévá pohled
+ * v_historie_zarizeni z migrace 0023. Aplikace je nespojuje sama schválně:
+ * kdyby to dělala, každá další obrazovka by si to spojení psala po svém.
+ *
+ * Jména se dotahují zvlášť, protože pohled vede jen identifikátory. Je to jeden
+ * dotaz navíc a odpadá s ním join, který by v pohledu obcházel RLS nad profily.
+ */
+export async function nactiHistoriiZarizeni(
+  zarizeniId: string,
+  strop = 100,
+): Promise<UdalostHistorie[]> {
+  const supabase = await vytvorServerovehoKlienta()
+
+  const { data } = await supabase
+    .from('v_historie_zarizeni')
+    .select('*')
+    .eq('zarizeni_id', zarizeniId)
+    .order('kdy', { ascending: false })
+    .limit(strop)
+
+  const udalosti = data ?? []
+  if (udalosti.length === 0) return []
+
+  const jmena = await jmenaPodleId([
+    ...new Set(udalosti.flatMap((u) => [u.provedl_id, u.zapsal_id]).filter(Boolean) as string[]),
+  ])
+
+  return udalosti.map((u) => ({
+    puvod: u.puvod,
+    zaznamId: u.zaznam_id,
+    kdy: u.kdy,
+    nazev: u.nazev,
+    popis: u.popis,
+    provedl: u.provedl_id ? (jmena.get(u.provedl_id) ?? null) : null,
+    zapsal: u.zapsal_id ? (jmena.get(u.zapsal_id) ?? null) : null,
+    dobaTrvaniMin: u.doba_trvani_min,
+    ukonuCelkem: u.ukonu_celkem,
+    ukonuSplneno: u.ukonu_splneno,
+    ukonuNeprovedeno: u.ukonu_neprovedeno,
+    fotek: u.fotek,
+  }))
+}
+
+async function jmenaPodleId(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map()
+
+  const supabase = await vytvorServerovehoKlienta()
+  const { data } = await supabase.from('profil').select('id, jmeno, prijmeni').in('id', ids)
+
+  return new Map(
+    (data ?? []).map((osoba) => [osoba.id, `${osoba.jmeno} ${osoba.prijmeni}`.trim()]),
+  )
 }
 
 async function nactiStrojePodleId(ids: string[]): Promise<Map<string, StrojVNabidce>> {
