@@ -92,6 +92,13 @@ místo deseti politik. Podrobně v `docs/PORTABILITA.md`.
 Na `audit_log`, dokončených zakázkách a záznamech deníku jsou odebrána práva `DELETE`
 a `UPDATE`. RLS řídí viditelnost, nikoli nemazatelnost — to je častý omyl.
 
+> **Revoke vždy pro `anon, authenticated`.** Supabase má na schématu `public` nastavená
+> výchozí práva, která každé nově vzniklé tabulce rovnou dají `GRANT ALL` pro obě role.
+> Migrace do 0020 odebíraly plošně jen `anon`, takže sloupcové granty nedržely —
+> `GRANT` na jednotlivé sloupce se s tabulkovým právem sčítá, nepřebíjí ho. Srovnala to
+> migrace 0021 a hlídá `supabase/tests/prava_zakazek.sql`. Neudělené právo je právo jen
+> tehdy, když se předtím výslovně odebralo.
+
 ### 1.3 Plánovač
 
 Noční úloha `pg_cron` (03:00) prochází `plan_udrzby` a zakládá zakázky pro úkony, jejichž

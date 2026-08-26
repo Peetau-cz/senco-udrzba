@@ -7,7 +7,7 @@
 -- Rozhodnutí R4, na kterém stojí celý modul: deník NEOVLIVŇUJE plán preventivní
 -- údržby ani plnění matice (zadání ř. 144). Proto tu není jediný odkaz do
 -- plan_udrzby ani jediný trigger, který by se ho dotkl. Sjednocení obou světů
--- přijde až pohledem v_historie_zarizeni (migrace 0022) - tedy až při čtení,
+-- přijde až pohledem v_historie_zarizeni (migrace 0023) - tedy až při čtení,
 -- nikdy při zápisu. Hlídá to supabase/tests/denik.sql.
 --
 -- Odchylka od návrhu (rozhodnutí uživatele z 26. 8. 2026): návrh měl na deníku
@@ -17,7 +17,7 @@
 -- úvaha jako u oblastí (zásada R2 v návrhu).
 --
 -- Čistý PostgreSQL. Fotky leží v Supabase Storage a to je jediná část závislá
--- na Supabase - proto přijde samostatnou migrací 0021 (PORTABILITA.md, pravidlo 2).
+-- na Supabase - proto přijde samostatnou migrací 0022 (PORTABILITA.md, pravidlo 2).
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -130,7 +130,7 @@ create table public.denik_foto (
 create index denik_foto_zaznam_idx on public.denik_foto (zaznam_id);
 
 comment on table public.denik_foto is
-  'Fotodokumentace zásahu (zadání ř. 151). Soubory leží v Supabase Storage, viz migrace 0021.';
+  'Fotodokumentace zásahu (zadání ř. 151). Soubory leží v Supabase Storage, viz migrace 0022.';
 
 -- -----------------------------------------------------------------------------
 -- Zásah se nezapisuje dopředu
