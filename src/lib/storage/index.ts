@@ -24,7 +24,10 @@ export const NADOBA_ZARIZENI = 'zarizeni'
 /** Fotodokumentace provedené údržby. Vzniká v migraci 0012. */
 export const NADOBA_ZAKAZEK = 'zakazky'
 
-export type Nadoba = typeof NADOBA_ZARIZENI | typeof NADOBA_ZAKAZEK
+/** Fotky k zápisům v provozním deníku. Vzniká v migraci 0022. */
+export const NADOBA_DENIKU = 'denik'
+
+export type Nadoba = typeof NADOBA_ZARIZENI | typeof NADOBA_ZAKAZEK | typeof NADOBA_DENIKU
 
 /**
  * Jak dlouho platí odkaz na soubor. Hodina bohatě stačí na otevření návodu i na
