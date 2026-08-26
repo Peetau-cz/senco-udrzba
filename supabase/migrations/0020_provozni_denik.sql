@@ -384,7 +384,14 @@ create policy denik_foto_zapis on public.denik_foto
 -- mašiny. Oblast je v seznamu proto, že se stroj a oblast mění jedním klíčem.
 -- -----------------------------------------------------------------------------
 
-revoke all on public.druh_zasahu, public.provozni_denik, public.denik_foto from anon;
+-- REVOKE i pro authenticated, ne jen pro anon. Supabase má na schématu public
+-- nastavená výchozí práva (ALTER DEFAULT PRIVILEGES), která každé nově vzniklé
+-- tabulce rovnou dají GRANT ALL pro anon i authenticated. Bez tohohle řádku je
+-- každý sloupcový grant níž jen ozdoba - plošné právo ho přebije a technik smí
+-- přepsat zapsal_id i vytvoreno_at, tedy obejít okno na opravu. Odhalila to
+-- kontrola č. 6 v supabase/tests/denik.sql.
+revoke all on public.druh_zasahu, public.provozni_denik, public.denik_foto
+  from anon, authenticated;
 
 grant select, insert, update, delete on public.druh_zasahu to authenticated;
 
@@ -400,8 +407,8 @@ grant update (zarizeni_id, oblast_id, druh_zasahu_id, popis, provedeno_at,
               provedl_id, doba_trvani_min)
   on public.provozni_denik to authenticated;
 
--- Klíčové pro úplnost historie (zásada R5). RLS by to nezajistila.
-revoke delete on public.provozni_denik from authenticated, anon;
+-- DELETE na provozni_denik se schválně NEUDĚLUJE. Po plošném revoke výš to
+-- stačí; historie deníku tím není mazatelná ani administrátorem (zásada R5).
 
 grant select, insert, delete on public.denik_foto to authenticated;
 grant update (popis) on public.denik_foto to authenticated;
