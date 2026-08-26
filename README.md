@@ -105,11 +105,14 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
-Ke schématu patří ještě pět skriptů, které se pouštějí stejně: `supabase/tests/sablony.sql`
+Ke schématu patří ještě sedm skriptů, které se pouštějí stejně: `supabase/tests/sablony.sql`
 ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
 vydání nové verze šablony se zadanými termíny, `supabase/tests/zakazky.sql` neměnnost
-uzavřené zakázky, `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače
-a `supabase/tests/plneni.sql` definici, podle které se počítá plnění matice.
+uzavřené zakázky, `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače,
+`supabase/tests/plneni.sql` definici, podle které se počítá plnění matice,
+`supabase/tests/pripravenost.sql` rozpoznání strojů s nedodělaným plánem
+a `supabase/tests/denik.sql` okno na opravu zápisu v provozním deníku a hlavně to,
+že se deník nedotkne plánu údržby.
 
 ## Jak se počítá plnění matice
 
