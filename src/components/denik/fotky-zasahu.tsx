@@ -2,19 +2,28 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
-import { Button } from '@/components/ui/button'
+import { Camera } from 'lucide-react'
 import { TlacitkoSmazat } from '@/components/ui/tlacitko-smazat'
 import type { FotkaZapisu } from '@/lib/denik/dotazy'
 import { PRIJIMANE_PRIPONY_FOTEK } from '@/lib/plan/fotky'
 import type { StavFotky } from '@/app/(aplikace)/denik/actions'
 
-function TlacitkoNahrat() {
+/**
+ * Průběh nahrávání místo potvrzovacího tlačítka.
+ *
+ * Fotka se ukládá sama hned po vyfocení, takže tlačítko „Přidat fotku" by se
+ * vedle toho četlo jako povinný druhý krok. Zbývá jediné, co je opravdu
+ * potřeba: říct, že se něco děje. Stejně je to u kroku checklistu.
+ */
+function PrubehNahravani() {
   const { pending } = useFormStatus()
+  if (!pending) return null
 
   return (
-    <Button type="submit" variant="secondary" disabled={pending}>
-      {pending ? 'Nahrávám…' : 'Přidat fotku'}
-    </Button>
+    <p role="status" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <Camera aria-hidden="true" className="size-4" />
+      Nahrávám fotku…
+    </p>
   )
 }
 
@@ -112,9 +121,7 @@ export function FotkyZasahu({
             </p>
           ) : null}
 
-          {/* Tlačítko zůstává pro případ, že javascript neběží - pak se
-              onChange nespustí a nahrání musí jít vyvolat ručně. */}
-          <TlacitkoNahrat />
+          <PrubehNahravani />
 
           <p className="text-xs text-muted-foreground">
             Fotka se uloží hned po vyfocení. Odebrat ji jde, dokud je zápis v okně na opravu.

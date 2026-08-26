@@ -39,13 +39,24 @@ function TlacitkoNelze() {
   )
 }
 
-function TlacitkoFotka() {
+/**
+ * Průběh nahrávání místo tlačítka.
+ *
+ * Tlačítko „Přidat fotku" tu bylo do 26. 8. 2026 jako pojistka pro prohlížeč
+ * bez javascriptu. Když se ale fotka ukládá sama hned po vyfocení, čte se
+ * tlačítko vedle toho jako povinný druhý krok - a technik pak neví, jestli
+ * je hotovo. Bez javascriptu se fotka nenahraje, stejně jako se bez něj
+ * neukáže potvrzení u mazání; poslední slovo má tak jako tak databáze.
+ */
+function PrubehNahravani() {
   const { pending } = useFormStatus()
+  if (!pending) return null
+
   return (
-    <Button type="submit" size="dotyk" variant="outline" disabled={pending}>
+    <p role="status" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
       <Camera aria-hidden="true" className="size-4" />
-      {pending ? 'Nahrávám…' : 'Přidat fotku'}
-    </Button>
+      Nahrávám fotku…
+    </p>
   )
 }
 
@@ -298,9 +309,7 @@ export function KrokChecklistu({
                   </p>
                 ) : null}
 
-                {/* Tlačítko zůstává pro případ, že javascript neběží - pak se
-                    onChange nespustí a nahrání musí jít vyvolat ručně. */}
-                <TlacitkoFotka />
+                <PrubehNahravani />
 
                 <p className="text-xs text-muted-foreground">
                   Fotka se ukládá hned po vyfocení, nezávisle na ostatních krocích. Smazat ji jde,
