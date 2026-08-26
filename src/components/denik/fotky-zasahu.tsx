@@ -40,9 +40,9 @@ export function FotkyZasahu({
   const [stav, formAction] = useActionState<StavFotky, FormData>(nahrajAkce, {})
   const formular = useRef<HTMLFormElement>(null)
 
-  // Po úspěchu vyprázdnit výběr, jinak by druhé kliknutí nahrálo tentýž soubor
-  // znovu. Sleduje se celý stav, ne text hlášky - ta se u dvou stejných fotek
-  // za sebou neliší.
+  // Po nahrání vyprázdnit výběr, jinak by druhé vyfocení téhož souboru
+  // nespustilo onChange - hodnota pole by se nezměnila. Sleduje se celý stav,
+  // ne text hlášky: ta je u dvou fotek za sebou stejná.
   useEffect(() => {
     if (stav.hotovo) formular.current?.reset()
   }, [stav])
@@ -83,7 +83,7 @@ export function FotkyZasahu({
       )}
 
       {smiMenit ? (
-        <form ref={formular} action={formAction} className="space-y-2">
+        <form ref={formular} action={formAction} className="space-y-3">
           <input
             name="fotka"
             type="file"
@@ -91,7 +91,13 @@ export function FotkyZasahu({
             capture="environment"
             required
             aria-label="Fotka k zásahu"
-            className="flex h-dotyk w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            // Nahraje se hned po vyfocení, bez druhého kliknutí - stejně jako
+            // u kroku checklistu (M3). Kdo místo tlačítka klepl na něco jiného,
+            // o fotku tiše přišel: stránka se překreslila a výběr se zahodil.
+            onChange={(udalost) => {
+              if (udalost.target.files?.length) udalost.target.form?.requestSubmit()
+            }}
+            className="flex h-dotyk w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:h-8 file:rounded-md file:border-0 file:bg-secondary file:px-3 file:text-sm file:font-medium file:text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
 
           {stav.chyba ? (
@@ -106,7 +112,13 @@ export function FotkyZasahu({
             </p>
           ) : null}
 
+          {/* Tlačítko zůstává pro případ, že javascript neběží - pak se
+              onChange nespustí a nahrání musí jít vyvolat ručně. */}
           <TlacitkoNahrat />
+
+          <p className="text-xs text-muted-foreground">
+            Fotka se uloží hned po vyfocení. Odebrat ji jde, dokud je zápis v okně na opravu.
+          </p>
         </form>
       ) : null}
     </div>
