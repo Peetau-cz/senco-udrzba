@@ -18,10 +18,15 @@ parametry, strom umístění.
 zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
 **M4 (dashboard a plnění)** schválený — dashboard s dnešním plánem a restancemi,
 `/plneni` s rozklikem oblasti a exportem do XLSX.
-**M5 (provozní deník a historie)** rozpracovaný — evidence neplánovaných zásahů na
-`/denik`, číselník druhů zásahu a záložka Historie na kartě stroje, kde se dokončené
-údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán údržby ani plnění
-matice neovlivňuje (zadání ř. 144).
+**M5 (provozní deník a historie)** hotový a schválený — evidence neplánovaných zásahů
+na `/denik`, zápis na `/denik/novy` i rovnou od stroje, oprava a fotky na `/denik/[id]`,
+číselník druhů zásahu na `/nastaveni/druhy-zasahu` a záložka Historie na kartě stroje,
+kde se dokončené údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán
+údržby ani plnění matice neovlivňuje (zadání ř. 144).
+Další na řadě je **M6 (audit a správa)** — auditní log, správa uživatelů, oblasti
+a garanti, notifikace. Stránky `/audit`, `/nastaveni/uzivatele` a `/nastaveni/oblasti`
+na něj zatím čekají jako zástupné; tabulka `audit_log` i její RLS existují od migrace
+0001, takže M6 začne spíš u obrazovek než u schématu.
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
@@ -132,6 +137,11 @@ ověřená proti datům, je `supabase/tests/plneni.sql`.
 | Období podle plánovaného termínu | Úkon plánovaný na 31. 8. a udělaný 2. 9. patří do srpna. |
 | Jen to, co už bylo splatné | Jinak by 1. v měsíci vždycky ukazoval 0 % a číslo za probíhající měsíc by klesalo pokaždé, když proběhne plánovač. |
 | Počítá se po krocích, ne po zakázkách | Zakázka o šesti úkonech by jinak vážila stejně jako zakázka o jednom. |
+
+Pozor na jednotky: dlaždice **Dnes** a **Po termínu** počítají otevřené **zakázky**,
+kdežto **splněno / celkem** a **Plnění %** počítají **úkony** — a to i ty z dokončených
+zakázek, které v prvních dvou dlaždicích vidět nejsou. Tři zakázky po termínu vedle sedmi
+úkonů po termínu je tedy správně, ne nesrovnalost.
 
 Počítá se v databázi (pohledy `v_plneni_matice`, `v_dnesni_plan`, `v_po_terminu`), aby
 dashboard, obrazovka plnění i export do XLSX ukázaly totéž číslo. Všechny tři pohledy mají
