@@ -16,9 +16,12 @@ parametry, strom umístění.
 **M2 (šablony údržby)** schválený: matice úkonů, verzování a přiřazení strojům.
 **M3 (plán a provedení)** hotový a schválený — plán údržby na kartě zařízení, seznam
 zakázek na `/plan`, checklist provedení na `/zakazky/[id]` a noční plánovač.
-**M4 (dashboard a plnění)** rozpracovaný — dashboard s dnešním plánem a restancemi,
+**M4 (dashboard a plnění)** schválený — dashboard s dnešním plánem a restancemi,
 `/plneni` s rozklikem oblasti a exportem do XLSX.
-Historie zařízení na kartě záměrně chybí — doplní ji M5.
+**M5 (provozní deník a historie)** rozpracovaný — evidence neplánovaných zásahů na
+`/denik`, číselník druhů zásahu a záložka Historie na kartě stroje, kde se dokončené
+údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán údržby ani plnění
+matice neovlivňuje (zadání ř. 144).
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.
@@ -105,11 +108,17 @@ Supabase. Skript nic nemění a při porušení pravidel vyhodí výjimku s popi
 Totéž zvenčí, přes REST API a veřejný klíč: `npm run overit:rls` — ten navíc zkouší
 nahrát přílohu jménem uživatelů, kteří na to nemají právo.
 
-Ke schématu patří ještě pět skriptů, které se pouštějí stejně: `supabase/tests/sablony.sql`
+Ke schématu patří ještě devět skriptů, které se pouštějí stejně: `supabase/tests/sablony.sql`
 ověřuje neměnnost aktivované verze, `supabase/tests/plan.sql` to, že plán údržby přežije
 vydání nové verze šablony se zadanými termíny, `supabase/tests/zakazky.sql` neměnnost
-uzavřené zakázky, `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače
-a `supabase/tests/plneni.sql` definici, podle které se počítá plnění matice.
+uzavřené zakázky, `supabase/tests/planovac.sql` výpočet termínů a idempotenci plánovače,
+`supabase/tests/plneni.sql` definici, podle které se počítá plnění matice,
+`supabase/tests/pripravenost.sql` rozpoznání strojů s nedodělaným plánem,
+`supabase/tests/denik.sql` okno na opravu zápisu v provozním deníku a hlavně to,
+že se deník nedotkne plánu údržby, `supabase/tests/prava_zakazek.sql` sloupcová
+práva nad zakázkou a plánem — tedy že technik neodklikne víc, než na co má právo —
+a `supabase/tests/historie.sql` to, že se v časové ose zařízení potkají obě poloviny
+historie a nepřimíchá se do ní práce, která se nikdy neudělala.
 
 ## Jak se počítá plnění matice
 

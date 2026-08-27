@@ -92,6 +92,13 @@ místo deseti politik. Podrobně v `docs/PORTABILITA.md`.
 Na `audit_log`, dokončených zakázkách a záznamech deníku jsou odebrána práva `DELETE`
 a `UPDATE`. RLS řídí viditelnost, nikoli nemazatelnost — to je častý omyl.
 
+> **Revoke vždy pro `anon, authenticated`.** Supabase má na schématu `public` nastavená
+> výchozí práva, která každé nově vzniklé tabulce rovnou dají `GRANT ALL` pro obě role.
+> Migrace do 0020 odebíraly plošně jen `anon`, takže sloupcové granty nedržely —
+> `GRANT` na jednotlivé sloupce se s tabulkovým právem sčítá, nepřebíjí ho. Srovnala to
+> migrace 0021 a hlídá `supabase/tests/prava_zakazek.sql`. Neudělené právo je právo jen
+> tehdy, když se předtím výslovně odebralo.
+
 ### 1.3 Plánovač
 
 Noční úloha `pg_cron` (03:00) prochází `plan_udrzby` a zakládá zakázky pro úkony, jejichž
@@ -297,13 +304,31 @@ ne dalšímu plánování.
 ### 2.5 Provozní deník a historie
 
 ```
-provozni_denik (id, zarizeni_id, oblast_id, typ_zasahu, popis,
-                provedeno_at, provedl_id, doba_trvani_min, zapsal_id)
-    └── denik_foto
+druh_zasahu (id, kod, nazev, poradi, aktivni)
+    └── provozni_denik (id, zarizeni_id, oblast_id, druh_zasahu_id, popis,
+                        provedeno_at, provedl_id, doba_trvani_min, zapsal_id)
+            └── denik_foto
 ```
 
 Neovlivňuje `plan_udrzby` ani výpočet plnění. Pohled `v_historie_zarizeni` sjednocuje
 dokončené zakázky a záznamy deníku do jedné časové osy — to je „kompletní historie" ze ř. 147.
+
+**Druh zásahu je číselník, ne výčet v kódu** (rozhodnutí z 26. 8. 2026). Návrh tu původně měl
+sloupec `typ_zasahu`, ale zadání ř. 137 uvádí šest druhů slovem „například" — výčet tedy není
+úplný a rozšířit ho má jít záznamem, ne migrací. Táž úvaha jako u oblastí (zásada R2).
+
+**Doba trvání i fotka jsou volitelné.** Zápis vzniká na tabletu v hale, často po směně za víc
+zásahů najednou; povinné pole by vedlo k tomu, že se zásah nezapíše vůbec. Vyplněnost se řeší
+pohodlím formuláře (nabídka 15/30/60 min, fotoaparát na jedno klepnutí), ne povinností.
+
+**`provedl_id` a `zapsal_id` se mohou lišit.** V hale je jeden tablet a zapisuje se za partu;
+formulář proto „provedl" nabízí, předvyplněný přihlášeným. Kdo zápis pořídil, se nepřepisuje —
+drží to sloupcová práva, protože právě `zapsal_id` rozhoduje o právu na opravu.
+
+**Oprava zápisu: autor do 24 hodin, vedoucí údržby a administrátor kdykoli.** Mazat nelze nikdy
+(zásada R5, `REVOKE DELETE`), každá změna jde do `audit_log` včetně původního stavu. Bez okna by
+byla nemazatelnost polovičatá — zápis by šlo tiše přepsat na cokoli. Opravit jde i zařízení
+a datum, protože nejčastější chyba je vybraný špatný stroj.
 
 ### 2.6 Audit
 

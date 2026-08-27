@@ -909,6 +909,141 @@ export type Database = {
           },
         ]
       }
+      druh_zasahu: {
+        Row: {
+          id: string
+          kod: string
+          nazev: string
+          poradi: number
+          aktivni: boolean
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          kod: string
+          nazev: string
+          poradi?: number
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          kod?: string
+          nazev?: string
+          poradi?: number
+          aktivni?: boolean
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: []
+      }
+      provozni_denik: {
+        Row: {
+          id: string
+          zarizeni_id: string
+          oblast_id: string
+          druh_zasahu_id: string
+          popis: string
+          provedeno_at: string
+          provedl_id: string | null
+          doba_trvani_min: number | null
+          zapsal_id: string | null
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          zarizeni_id: string
+          oblast_id: string
+          druh_zasahu_id: string
+          popis: string
+          provedeno_at?: string
+          provedl_id?: string | null
+          doba_trvani_min?: number | null
+          /** Doplní se sám z přihlášení. Poslat cizí id politika nepustí. */
+          zapsal_id?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          zarizeni_id?: string
+          oblast_id?: string
+          druh_zasahu_id?: string
+          popis?: string
+          provedeno_at?: string
+          provedl_id?: string | null
+          doba_trvani_min?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'provozni_denik_zarizeni_fk'
+            columns: ['zarizeni_id', 'oblast_id']
+            isOneToOne: false
+            referencedRelation: 'zarizeni'
+            referencedColumns: ['id', 'oblast_id']
+          },
+          {
+            foreignKeyName: 'provozni_denik_druh_zasahu_id_fkey'
+            columns: ['druh_zasahu_id']
+            isOneToOne: false
+            referencedRelation: 'druh_zasahu'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'provozni_denik_provedl_id_fkey'
+            columns: ['provedl_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'provozni_denik_zapsal_id_fkey'
+            columns: ['zapsal_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      denik_foto: {
+        Row: {
+          id: string
+          zaznam_id: string
+          storage_path: string
+          popis: string | null
+          nahral_id: string | null
+          vytvoreno_at: string
+        }
+        Insert: {
+          id?: string
+          zaznam_id: string
+          storage_path: string
+          popis?: string | null
+          nahral_id?: string | null
+          vytvoreno_at?: string
+        }
+        Update: {
+          popis?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'denik_foto_zaznam_id_fkey'
+            columns: ['zaznam_id']
+            isOneToOne: false
+            referencedRelation: 'provozni_denik'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'denik_foto_nahral_id_fkey'
+            columns: ['nahral_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       v_dnesni_plan: {
@@ -972,6 +1107,33 @@ export type Database = {
         }
         Relationships: []
       }
+      /**
+       * Migrace 0023. Jedna časová osa zařízení: dokončené zakázky a zápisy
+       * z deníku. Sloupce, které má jen jedna strana, jsou u druhé null —
+       * zásah z deníku nemá checklist a nula by tvrdila, že ho měl prázdný.
+       */
+      v_historie_zarizeni: {
+        Row: {
+          puvod: 'udrzba' | 'denik'
+          zaznam_id: string
+          zarizeni_id: string
+          oblast_id: string
+          /** Dokončení zakázky, nebo kdy se zásah provedl. */
+          kdy: string
+          /** Název šablony u zakázky, název druhu u zásahu. */
+          nazev: string
+          popis: string | null
+          provedl_id: string | null
+          /** Jen deník — u zakázky je vždy null. */
+          zapsal_id: string | null
+          doba_trvani_min: number | null
+          ukonu_celkem: number | null
+          ukonu_splneno: number | null
+          ukonu_neprovedeno: number | null
+          fotek: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       ma_roli: {
@@ -1017,6 +1179,10 @@ export type Database = {
       srovnej_plan: {
         Args: { p_zarizeni: string; p_sablona: string }
         Returns: undefined
+      }
+      muze_menit_zapis_deniku: {
+        Args: { p_zaznam: string }
+        Returns: boolean
       }
       provadi_udrzbu_v_oblasti: {
         Args: { p_oblast: string }
