@@ -15,7 +15,9 @@ Vazba: `docs/NAVRH.md`, `docs/zadani.txt` ř. 164–173
 | Náběh všech pěti oblastí najednou | ✅ rozhodnuto | 12. 8. 2026 |
 | Tarif Supabase pro ostrý provoz | ⬜ otevřené | |
 | Retence osobních údajů | ⬜ otevřené | |
-| Příjemci a četnost notifikací | ⬜ otevřené | |
+| Notifikace e-mailem | ✅ rozhodnuto | 27. 8. 2026 |
+| Podoba notifikací — komu, jak často, eskalace | ✅ rozhodnuto | 27. 8. 2026 |
+| Čím se maily odešlou (SMTP vs. externí služba) | ⬜ otevřené | |
 | Správce systému po předání | ⬜ otevřené | |
 | Vlastník produktu | ⬜ otevřené | |
 
@@ -67,8 +69,36 @@ Zásady:
 Zadání notifikace nezmiňuje, ale požaduje přehled o údržbách po termínu. Bez upozornění
 se o skluzu nikdo nedozví, dokud se nepodívá do aplikace.
 
-**Otevřené:** komu chodí (technikovi, garantovi, vedoucímu?), jak často (denní souhrn
-vs. okamžitě), od kolika dnů po termínu eskalovat výš. Blokuje modul M6.
+**Rozhodnuto 27. 8. 2026: notifikace půjdou e-mailem.** Ne do aplikace, ne SMS, ne
+chatem. Návrh v kap. 7 s tím počítal (`resend` nebo `nodemailer`), takže se stack
+nemění.
+
+**Podoba rozhodnuta 27. 8. 2026:**
+
+| Otázka | Rozhodnutí |
+|---|---|
+| Komu | Garantovi oblasti (`uzivatel_oblast`, vztah `garant`). Technici v dílně adresu nemají. Oblast bez garanta → souhrn dostane vedoucí údržby a je v něm napsáno, že garant chybí. |
+| Jak často | Denně ráno, **jen když je co poslat**. Prázdný mail nechodí. |
+| Eskalace | Co visí přes **7 dnů**, jde navíc vedoucímu údržby jako souhrn napříč oblastmi. |
+| Obsah | Výhradně to, co je po termínu. Bez dnešního plánu a bez výhledu. |
+| Kdo nedostane nic | Management (role je jen pro čtení) a technici. |
+
+**Architektura:** `pg_cron` naplní frontu v tabulce `notifikace` čistým SQL nad
+pohledem `v_po_terminu`, druhá úloha přes `pg_net` jen zazvoní na Edge Function, ta
+frontu zpracuje. Fronta dává dohledatelnost, idempotenci, odolnost proti výpadku
+odesílatele a testovatelnost bez skutečného odesílání. Obsah se bere ze stejného
+pohledu jako dashboard, aby se mail s obrazovkou nikdy nerozešel.
+
+**Práva:** Edge Function se hlásí vlastní rolí `odesilatel` s právem `execute` na dvě
+funkce a ničím víc — **ne servisním klíčem**. Zásada R1 zůstává neporušená a věta
+o tom, že `service_role` patří výhradně do seed skriptu, platí dál.
+
+**Realizace odložena** rozhodnutím z 27. 8. 2026 až na závěrečné moduly. **Neblokuje
+už M6.**
+
+**Otevřené:** čím se maily fyzicky odešlou — firemní SMTP, nebo externí služba. Přes
+externí službu by prošla jména zaměstnanců a označení strojů, což souvisí s retencí
+osobních údajů výše. Dál přesný čas odeslání a znění zprávy.
 
 ## 5. Objem dat a náklady
 

@@ -24,6 +24,7 @@ declare
   v_typ_cnc        uuid;
   v_typ_strojni    uuid;
   v_pocet          integer;
+  v_audit_celkem   integer;
   v_proslo         boolean;
 begin
   select id into v_cnc        from auth.users where email = 'cnc@senco.test';
@@ -111,6 +112,63 @@ begin
 
   if v_proslo then
     raise exception 'Podařilo se smazat z audit_log. Neměnnost auditu nedrží.';
+  end if;
+
+  execute 'reset role';
+
+  -- ---------------------------------------------------------------------------
+  -- 4b. Auditní log čte jen administrátor, vedoucí údržby a management
+  --     (matice oprávnění kap. 3.1, politika audit_log_select).
+  --
+  --     Nemazatelnost výš a viditelnost tady jsou dvě různé věci: DELETE drží
+  --     odebrané právo, čtení drží RLS. Test na jedno o druhém nic neříká.
+  -- ---------------------------------------------------------------------------
+  select count(*) into v_audit_celkem from public.audit_log;
+
+  if v_audit_celkem = 0 then
+    raise exception 'audit_log je prázdný, test čtení auditu by nic neověřil. Spusťte seed.';
+  end if;
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_cnc, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> 0 then
+    raise exception 'Specialista CNC vidí % záznamů auditu, očekává se 0.', v_pocet;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_udrzbar, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> 0 then
+    raise exception 'Údržbář vidí % záznamů auditu, očekává se 0.', v_pocet;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_vedouci, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> v_audit_celkem then
+    raise exception 'Vedoucí údržby vidí % záznamů auditu, očekává se %.', v_pocet, v_audit_celkem;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_management, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> v_audit_celkem then
+    raise exception 'Management vidí % záznamů auditu, očekává se %.', v_pocet, v_audit_celkem;
   end if;
 
   execute 'reset role';
