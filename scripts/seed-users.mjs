@@ -230,11 +230,15 @@ async function main() {
   const oblastiDleKodu = new Map(oblasti.map((o) => [o.kod, o.id]))
 
   for (const u of uzivatele) {
-    const { id, novy } = await zalozUzivatele(u)
+    const { id: ucetId, novy } = await zalozUzivatele(u)
 
     // Profil vzniká triggerem nad auth.users; u existujícího uživatele
     // srovnáme údaje pro jistotu.
-    const { error: chybaProfilu } = await db
+    //
+    // Hledá se podle ucet_id, ne podle id: od migrace 0025 si profil své id
+    // určuje sám a s id účtu se neshoduje. Do vazebních tabulek pak patří
+    // to, co vrátí tenhle dotaz - id účtu by na cizím klíči spadlo.
+    const { data: profil, error: chybaProfilu } = await db
       .from('profil')
       .update({
         jmeno: u.jmeno,
@@ -242,8 +246,18 @@ async function main() {
         osobni_cislo: u.osobni_cislo,
         email: u.email,
       })
-      .eq('id', id)
+      .eq('ucet_id', ucetId)
+      .select('id')
+      .maybeSingle()
     if (chybaProfilu) throw chybaProfilu
+
+    if (!profil) {
+      throw new Error(
+        `K účtu ${u.email} neexistuje profil. Proběhla migrace 0025 a její trigger nad auth.users?`,
+      )
+    }
+
+    const id = profil.id
 
     await priradRole(id, u.role, roleDleKodu)
     await priradOblasti(id, u.oblasti, oblastiDleKodu)
