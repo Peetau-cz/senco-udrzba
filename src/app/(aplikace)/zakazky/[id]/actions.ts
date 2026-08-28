@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
+import { idPrihlaseneOsoby } from '@/lib/auth/session'
 import { doplnOdpovedi, prectiCislo, prectiVyplneneBody } from '@/lib/plan/body'
 import { cestaFotky, overFotku } from '@/lib/plan/fotky'
 import { NADOBA_ZAKAZEK, smazSoubory, ulozSoubor } from '@/lib/storage'
@@ -42,13 +43,10 @@ export async function zahajZakazku(zakazkaId: string): Promise<void> {
 /** Vezme si zakázku na sebe, nebo ji zase pustí. */
 export async function prevezmiZakazku(zakazkaId: string, prevzit: boolean): Promise<void> {
   const supabase = await vytvorServerovehoKlienta()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
   await supabase
     .from('zakazka')
-    .update({ prirazeno_uzivateli_id: prevzit ? (user?.id ?? null) : null })
+    .update({ prirazeno_uzivateli_id: prevzit ? await idPrihlaseneOsoby() : null })
     .eq('id', zakazkaId)
 
   obnov(zakazkaId)
@@ -112,7 +110,7 @@ export async function ulozKrok(
       poznamka,
       kontrolni_body: doplnOdpovedi(puvodni, odpovedi),
       potvrzeno_at: new Date().toISOString(),
-      potvrdil_id: (await supabase.auth.getUser()).data.user?.id ?? null,
+      potvrdil_id: await idPrihlaseneOsoby(),
     })
     .eq('id', krokId)
 
@@ -156,11 +154,9 @@ export async function nahrajFotku(
   if (namitka) return { chyba: namitka }
 
   const supabase = await vytvorServerovehoKlienta()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const osobaId = await idPrihlaseneOsoby()
 
-  if (!user) return { chyba: 'Přihlášení vypršelo. Přihlaste se znovu.' }
+  if (!osobaId) return { chyba: 'Přihlášení vypršelo. Přihlaste se znovu.' }
 
   const cesta = cestaFotky(zakazkaId, fotka.type, randomUUID())
 
@@ -171,7 +167,7 @@ export async function nahrajFotku(
     zakazka_ukon_id: krokId,
     storage_path: cesta,
     popis: textNeboNull(formData.get('popis')),
-    nahral_id: user.id,
+    nahral_id: osobaId,
   })
 
   if (error) {

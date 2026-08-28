@@ -94,6 +94,35 @@ const uzivatele = [
     role: ['management'],
     oblasti: [],
   },
+  // Účet zařízení, ne člověka. Adresa je technická - nikdo na ni nečte poštu,
+  // slouží jen k tomu, že Supabase Auth jiný způsob přihlášení nezná.
+  {
+    email: 'kiosek-strojni@senco.local',
+    jmeno: 'Kiosek', prijmeni: 'Strojní údržba', osobni_cislo: null,
+    role: ['kiosek'],
+    oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
+  },
+]
+
+/**
+ * Lidé z dílny. Mail nemají, takže účet nedostanou - v systému existují jako
+ * osoby bez přihlášení (migrace 0024) a u kiosku se prokazují kartou.
+ *
+ * Právě kvůli nim celá ta změna vznikla, takže bez nich se nedá testovat.
+ */
+const osobyBezUctu = [
+  {
+    jmeno: 'Karel', prijmeni: 'Zámečník', osobni_cislo: '2001',
+    role: ['udrzbar'],
+    oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
+    karta: 'KARTA-2001',
+  },
+  {
+    jmeno: 'Alena', prijmeni: 'Nováková', osobni_cislo: '2002',
+    role: ['udrzbar'],
+    oblasti: [{ kod: 'lakovna', vztah: 'spolupracujici' }],
+    karta: 'KARTA-2002',
+  },
 ]
 
 async function najdiUzivatele(email) {
@@ -126,6 +155,66 @@ async function zalozUzivatele(u) {
   return { id: stavajici.id, novy: false }
 }
 
+/** Osobu poznáme podle osobního čísla - mail ani účet u dílny neexistují. */
+async function najdiNeboZalozOsobu(o) {
+  const { data: stavajici, error } = await db
+    .from('profil')
+    .select('id')
+    .eq('osobni_cislo', o.osobni_cislo)
+    .maybeSingle()
+  if (error) throw error
+  if (stavajici) return { id: stavajici.id, novy: false }
+
+  const { data, error: chybaZalozeni } = await db
+    .from('profil')
+    .insert({ jmeno: o.jmeno, prijmeni: o.prijmeni, osobni_cislo: o.osobni_cislo })
+    .select('id')
+    .single()
+  if (chybaZalozeni) throw chybaZalozeni
+  return { id: data.id, novy: true }
+}
+
+async function priradRole(id, kody, roleDleKodu) {
+  const vazby = kody.map((kod) => {
+    const roleId = roleDleKodu.get(kod)
+    if (!roleId) throw new Error(`Neznámá role: ${kod}`)
+    return { uzivatel_id: id, role_id: roleId }
+  })
+  if (!vazby.length) return
+  const { error } = await db.from('uzivatel_role').upsert(vazby, {
+    onConflict: 'uzivatel_id,role_id',
+  })
+  if (error) throw error
+}
+
+async function priradOblasti(id, oblasti, oblastiDleKodu) {
+  const vazby = oblasti.map(({ kod, vztah }) => {
+    const oblastId = oblastiDleKodu.get(kod)
+    if (!oblastId) throw new Error(`Neznámá oblast: ${kod}`)
+    return { uzivatel_id: id, oblast_id: oblastId, vztah }
+  })
+  if (!vazby.length) return
+  const { error } = await db.from('uzivatel_oblast').upsert(vazby, {
+    onConflict: 'uzivatel_id,oblast_id',
+  })
+  if (error) throw error
+}
+
+/** Unikátnost čísla platí jen mezi aktivními kartami, proto se nedá upsertovat. */
+async function priradKartu(id, cislo) {
+  const { data, error } = await db
+    .from('karta')
+    .select('id')
+    .eq('cislo', cislo)
+    .eq('aktivni', true)
+    .maybeSingle()
+  if (error) throw error
+  if (data) return
+
+  const { error: chybaZalozeni } = await db.from('karta').insert({ profil_id: id, cislo })
+  if (chybaZalozeni) throw chybaZalozeni
+}
+
 async function main() {
   const { data: role, error: chybaRoli } = await db.from('role').select('id, kod')
   if (chybaRoli) throw chybaRoli
@@ -156,34 +245,27 @@ async function main() {
       .eq('id', id)
     if (chybaProfilu) throw chybaProfilu
 
-    const vazbyRoli = u.role.map((kod) => {
-      const roleId = roleDleKodu.get(kod)
-      if (!roleId) throw new Error(`Neznámá role: ${kod}`)
-      return { uzivatel_id: id, role_id: roleId }
-    })
-    if (vazbyRoli.length) {
-      const { error } = await db.from('uzivatel_role').upsert(vazbyRoli, {
-        onConflict: 'uzivatel_id,role_id',
-      })
-      if (error) throw error
-    }
-
-    const vazbyOblasti = u.oblasti.map(({ kod, vztah }) => {
-      const oblastId = oblastiDleKodu.get(kod)
-      if (!oblastId) throw new Error(`Neznámá oblast: ${kod}`)
-      return { uzivatel_id: id, oblast_id: oblastId, vztah }
-    })
-    if (vazbyOblasti.length) {
-      const { error } = await db.from('uzivatel_oblast').upsert(vazbyOblasti, {
-        onConflict: 'uzivatel_id,oblast_id',
-      })
-      if (error) throw error
-    }
+    await priradRole(id, u.role, roleDleKodu)
+    await priradOblasti(id, u.oblasti, oblastiDleKodu)
 
     const oblastiPopis = u.oblasti.length
       ? u.oblasti.map((o) => `${o.kod}/${o.vztah}`).join(', ')
       : 'všechny (dle role)'
-    console.log(`${novy ? '+' : '='} ${u.email.padEnd(24)} ${u.role.join(', ').padEnd(22)} ${oblastiPopis}`)
+    console.log(`${novy ? '+' : '='} ${u.email.padEnd(28)} ${u.role.join(', ').padEnd(22)} ${oblastiPopis}`)
+  }
+
+  console.log('\nOsoby bez účtu (dílna - prokazují se kartou):')
+
+  for (const o of osobyBezUctu) {
+    const { id, novy } = await najdiNeboZalozOsobu(o)
+
+    await priradRole(id, o.role, roleDleKodu)
+    await priradOblasti(id, o.oblasti, oblastiDleKodu)
+    await priradKartu(id, o.karta)
+
+    const jmeno = `${o.jmeno} ${o.prijmeni}`
+    const oblastiPopis = o.oblasti.map((x) => `${x.kod}/${x.vztah}`).join(', ')
+    console.log(`${novy ? '+' : '='} ${jmeno.padEnd(28)} ${o.karta.padEnd(22)} ${oblastiPopis}`)
   }
 
   console.log(`\nHotovo. Heslo pro všechny testovací účty: ${heslo}`)

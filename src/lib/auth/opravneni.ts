@@ -19,6 +19,9 @@ export const KODY_ROLI = [
   'vedouci_lakovny',
   'pracovnik_skladu',
   'management',
+  // Účet dotykového zařízení v dílně, ne člověk. Ve webové části nemá co
+  // pohledávat - patří na /kiosek. Co smí v databázi, řeší migrace 0026.
+  'kiosek',
 ] as const
 
 export type KodRole = (typeof KODY_ROLI)[number]
@@ -38,10 +41,17 @@ export type Modul =
 
 export type Pravo = 'cteni' | 'zapis'
 
-const VSECHNY: readonly KodRole[] = KODY_ROLI
+/**
+ * Role, které nosí lidé. Kiosek je účet zařízení a webovou část nevidí, takže
+ * „všechny role" znamená všechny lidské - jinak by se mu moduly přidávaly samy
+ * pokaždé, když do matice přibude řádek.
+ */
+export const KODY_ROLI_LIDI: readonly KodRole[] = KODY_ROLI.filter((r) => r !== 'kiosek')
+
+const VSECHNY: readonly KodRole[] = KODY_ROLI_LIDI
 
 /** Management je podle zadání ř. 49 výhradně pro čtení. */
-const BEZ_MANAGEMENTU: readonly KodRole[] = KODY_ROLI.filter((r) => r !== 'management')
+const BEZ_MANAGEMENTU: readonly KodRole[] = KODY_ROLI_LIDI.filter((r) => r !== 'management')
 
 /** Garanti oblastí - spravují zařízení, šablony a plán ve své oblasti. */
 const GARANTI: readonly KodRole[] = [

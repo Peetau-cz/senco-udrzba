@@ -9,6 +9,11 @@ export type Oblast = {
 }
 
 export type PrihlasenyUzivatel = {
+  /**
+   * Id OSOBY (profil.id), ne id účtu. Od migrace 0024 to nejsou tytéž hodnoty:
+   * účet je jen jedna z vlastností osoby a spousta lidí ho vůbec nemá.
+   * Do sloupců jako dokoncil_id nebo provedl_id patří tohle.
+   */
   id: string
   email: string
   jmeno: string
@@ -43,14 +48,29 @@ export const nactiPrihlaseneho = cache(async (): Promise<PrihlasenyUzivatel | nu
 
   if (!user) return null
 
-  const [profilVysledek, roleVysledek, oblastiVysledek] = await Promise.all([
-    supabase.from('profil').select('jmeno, prijmeni, email').eq('id', user.id).single(),
-    supabase.from('uzivatel_role').select('role(kod)').eq('uzivatel_id', user.id),
+  // Osobu hledáme podle účtu, ne podle rovnosti id. Role se ptáme až potom,
+  // protože se váže na osobu - bez jejího id nemá dotaz co dosadit.
+  const [profilVysledek, oblastiVysledek] = await Promise.all([
+    supabase
+      .from('profil')
+      .select('id, jmeno, prijmeni, email')
+      .eq('ucet_id', user.id)
+      .maybeSingle(),
     supabase.from('oblast').select('id, kod, nazev').eq('aktivni', true).order('poradi'),
   ])
 
-  const jmeno = profilVysledek.data?.jmeno ?? ''
-  const prijmeni = profilVysledek.data?.prijmeni ?? ''
+  // Účet bez osoby je porucha, ne stav, ve kterém se dá pracovat: nešlo by
+  // podepsat jediný záznam. Stejně to vidí i aktualni_uzivatel() v databázi.
+  const profil = profilVysledek.data
+  if (!profil) return null
+
+  const roleVysledek = await supabase
+    .from('uzivatel_role')
+    .select('role(kod)')
+    .eq('uzivatel_id', profil.id)
+
+  const jmeno = profil.jmeno ?? ''
+  const prijmeni = profil.prijmeni ?? ''
 
   // Vnořený dotaz vrací u vazby N:1 jeden objekt, ne pole.
   const role = (roleVysledek.data ?? [])
@@ -59,8 +79,8 @@ export const nactiPrihlaseneho = cache(async (): Promise<PrihlasenyUzivatel | nu
     .filter(jeKodRole)
 
   return {
-    id: user.id,
-    email: profilVysledek.data?.email ?? user.email ?? '',
+    id: profil.id,
+    email: profil.email ?? user.email ?? '',
     jmeno,
     prijmeni,
     celeJmeno: [jmeno, prijmeni].filter(Boolean).join(' ') || (user.email ?? ''),
@@ -68,3 +88,16 @@ export const nactiPrihlaseneho = cache(async (): Promise<PrihlasenyUzivatel | nu
     oblasti: oblastiVysledek.data ?? [],
   }
 })
+
+/**
+ * Id přihlášené osoby pro sloupce typu `dokoncil_id`, `nahral_id` nebo `provedl_id`.
+ *
+ * Serverové akce si ho dřív braly ze `supabase.auth.getUser()`. Od migrace 0024
+ * to vrací id ÚČTU, což je jiná hodnota než id osoby, a cizí klíč do profilu by
+ * na ni spadl. Dotaz navíc nevzniká, nactiPrihlaseneho je v cache().
+ *
+ * Vrací null, když nikdo přihlášený není - volající to má ohlásit, ne zapsat.
+ */
+export async function idPrihlaseneOsoby(): Promise<string | null> {
+  return (await nactiPrihlaseneho())?.id ?? null
+}

@@ -112,17 +112,19 @@ export type Database = {
           jmeno: string
           prijmeni: string
           osobni_cislo: string | null
-          email: string
+          email: string | null
+          ucet_id: string | null
           aktivni: boolean
           vytvoreno_at: string
           zmeneno_at: string
         }
         Insert: {
-          id: string
+          id?: string
           jmeno?: string
           prijmeni?: string
           osobni_cislo?: string | null
-          email: string
+          email?: string | null
+          ucet_id?: string | null
           aktivni?: boolean
           vytvoreno_at?: string
           zmeneno_at?: string
@@ -132,12 +134,51 @@ export type Database = {
           jmeno?: string
           prijmeni?: string
           osobni_cislo?: string | null
-          email?: string
+          email?: string | null
+          ucet_id?: string | null
           aktivni?: boolean
           vytvoreno_at?: string
           zmeneno_at?: string
         }
         Relationships: []
+      }
+      karta: {
+        Row: {
+          id: string
+          profil_id: string
+          cislo: string
+          aktivni: boolean
+          poznamka: string | null
+          vytvoreno_at: string
+          zmeneno_at: string
+        }
+        Insert: {
+          id?: string
+          profil_id: string
+          cislo: string
+          aktivni?: boolean
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Update: {
+          id?: string
+          profil_id?: string
+          cislo?: string
+          aktivni?: boolean
+          poznamka?: string | null
+          vytvoreno_at?: string
+          zmeneno_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'karta_profil_id_fkey'
+            columns: ['profil_id']
+            isOneToOne: false
+            referencedRelation: 'profil'
+            referencedColumns: ['id']
+          },
+        ]
       }
       uzivatel_role: {
         Row: {
@@ -1136,6 +1177,24 @@ export type Database = {
       }
     }
     Functions: {
+      osoba_podle_karty: {
+        Args: { p_cislo: string }
+        Returns: {
+          id: string
+          jmeno: string
+          prijmeni: string
+          osobni_cislo: string | null
+        }[]
+      }
+      osoba_podle_osobniho_cisla: {
+        Args: { p_cislo: string }
+        Returns: {
+          id: string
+          jmeno: string
+          prijmeni: string
+          osobni_cislo: string | null
+        }[]
+      }
       ma_roli: {
         Args: { p_kod: string }
         Returns: boolean

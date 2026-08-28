@@ -61,6 +61,8 @@ existujících uživatelů a hesel je ta nejnepříjemnější část.
 | `supabase/migrations/0002_napojeni_na_supabase_auth.sql` | napojení identity, zakládání profilu | závislý |
 | `supabase/migrations/0004_uloziste_zarizeni.sql` | nádoba na fotky a návody ke strojům | závislý |
 | `supabase/migrations/0012_uloziste_zakazek.sql` | nádoba na fotodokumentaci údržby | závislý |
+| `supabase/migrations/0024_osoba_bez_uctu.sql` | osoba bez účtu, karty, identifikace | **žádná** — čistý PostgreSQL |
+| `supabase/migrations/0025_napojeni_uctu_na_osobu.sql` | překlad účtu na osobu, napojení účtu | závislý |
 
 Migrace 0001 se nasadí i na holý PostgreSQL server. Sama si vytvoří role `anon`
 a `authenticated`, pokud tam ještě nejsou. Závislé soubory jsou tři a všechny
@@ -78,17 +80,36 @@ select nullif(current_setting('app.uzivatel_id', true), '')::uuid;
 
 -- 0002: varianta pro Supabase - identita přichází v JWT
 select auth.uid();
+
+-- 0025: účet už není totéž co osoba, takže se musí přeložit
+select p.id from public.profil p where p.ucet_id = auth.uid();
 ```
 
 Přechod na jiné přihlašování je tedy **změna jedné funkce**, ne přepisování politik.
 Aplikace by na holém Postgresu musela po navázání spojení nastavit
-`set_config('app.uzivatel_id', <id>, true)`.
+`set_config('app.uzivatel_id', <id>, true)` — a od 0024 tam patří **id osoby**,
+protože přenositelná varianta překlad nedělá.
+
+Že se to celé svedlo na jednu funkci, se vyplatilo v M6: rozdělení osoby a účtu
+se v politikách neprojevilo ani jedním znakem.
+
+### Osoba a účet jsou dvě různé věci (od migrace 0024)
+
+`profil` znamená **osobu**. Účet je jen jedna z jejích vlastností — sloupec `ucet_id`,
+a u většiny lidí je prázdný. Vyplynulo to z provozu: mail má jen garant oddělení,
+technici v dílně žádný nemají a k identifikaci jim slouží karta na turniket.
+
+Důsledek pro aplikaci: `supabase.auth.getUser()` vrací **id účtu**, které se nesmí
+zapsat do sloupců jako `dokoncil_id` nebo `provedl_id`. K tomu je
+`idPrihlaseneOsoby()` v `src/lib/auth/session.ts`. Nové účty schválně dostávají jiné
+`profil.id` než `ucet_id`, aby se ta záměna poznala hned, a ne až v datech.
 
 ### `profil` není svázaný s `auth.users`
 
-Tabulka `profil` záměrně **nemá cizí klíč** do `auth.users`. Identifikátor dodává systém
-přihlašování; pod Supabase jej doplní trigger z migrace 0002. Doménový model tím
-nezávisí na schématu `auth`, které na holém Postgresu neexistuje.
+Tabulka `profil` záměrně **nemá cizí klíč** do `auth.users` — ani přes `id`, ani přes
+`ucet_id`. Identifikátor dodává systém přihlašování; pod Supabase jej doplní trigger
+z migrace 0002, upravený v 0025. Doménový model tím nezávisí na schématu `auth`,
+které na holém Postgresu neexistuje.
 
 ---
 

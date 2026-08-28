@@ -2,6 +2,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
+import { idPrihlaseneOsoby } from '@/lib/auth/session'
 import { NADOBA_ZARIZENI, smazSoubory, ulozSoubor } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { cestaSouboru, jeDruhSouboru, overSoubor, zkratNazev } from '@/lib/zarizeni/soubory'
@@ -43,11 +44,9 @@ export async function nahrajSoubor(
   if (namitka) return { chyba: namitka }
 
   const supabase = await vytvorServerovehoKlienta()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const osobaId = await idPrihlaseneOsoby()
 
-  if (!user) return { chyba: 'Přihlášení vypršelo. Přihlaste se znovu.' }
+  if (!osobaId) return { chyba: 'Přihlášení vypršelo. Přihlaste se znovu.' }
 
   const cesta = cestaSouboru(zarizeniId, soubor.type, randomUUID())
 
@@ -61,7 +60,7 @@ export async function nahrajSoubor(
     cesta,
     mime: soubor.type,
     velikost_b: soubor.size,
-    nahral_id: user.id,
+    nahral_id: osobaId,
   })
 
   if (chybaZapisu) {
