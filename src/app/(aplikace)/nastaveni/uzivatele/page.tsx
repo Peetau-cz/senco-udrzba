@@ -40,8 +40,13 @@ export default async function StrankaUzivatele() {
       <div>
         <h1 className="text-2xl font-semibold">Uživatelé a role</h1>
         <p className="text-muted-foreground">
-          Kdo v systému vystupuje. Přihlášení má jen ten, kdo má e-mail — dílna se prokazuje
-          kartou u kiosku.
+          Kdo v systému vystupuje a jak se dostane dovnitř. Přihlášení má jen ten, kdo má e-mail —
+          dílna se prokazuje kartou u kiosku. Zařazení do oblastí se nastavuje na kartě osoby a
+          přehled po oblastech je v{' '}
+          <Link href="/nastaveni/oblasti" className="underline underline-offset-2">
+            Oblastech a garantech
+          </Link>
+          .
         </p>
       </div>
 
@@ -57,7 +62,9 @@ export default async function StrankaUzivatele() {
 
         <CardContent>
           {lide.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">Založte první osobu formulářem níž.</p>
+            <p className="py-4 text-sm text-muted-foreground">
+              Založte první osobu formulářem níž.
+            </p>
           ) : (
             <ul className="divide-y rounded-md border">
               {lide.map((osoba) => (
@@ -95,8 +102,8 @@ export default async function StrankaUzivatele() {
           <CardHeader>
             <CardTitle className="text-base">Vyřazení</CardTitle>
             <CardDescription>
-              V nabídkách se neobjevují a od kiosku se neprokážou. Jejich podpis u starších
-              záznamů ale zůstal — historie se nepřepisuje.
+              V nabídkách se neobjevují a od kiosku se neprokážou. Jejich podpis u starších záznamů
+              ale zůstal — historie se nepřepisuje.
             </CardDescription>
           </CardHeader>
 
@@ -140,11 +147,8 @@ function RadekOsoby({ osoba }: { osoba: Osoba }) {
         <div className="min-w-0 flex-1">
           <span className="font-medium">{osoba.celeJmeno}</span>
           <p className="flex flex-wrap items-center gap-2 pt-1 text-xs text-muted-foreground">
-            {osoba.osobniCislo ? (
-              <span className="stitek-razeny">{osoba.osobniCislo}</span>
-            ) : null}
+            {osoba.osobniCislo ? <span className="stitek-razeny">{osoba.osobniCislo}</span> : null}
             <span>{popisRoli(osoba)}</span>
-            {osoba.oblasti.length > 0 ? <span>· {popisOblasti(osoba)}</span> : null}
           </p>
         </div>
 
@@ -176,12 +180,6 @@ function RadekOsoby({ osoba }: { osoba: Osoba }) {
 function popisRoli(osoba: Osoba): string {
   if (osoba.role.length === 0) return 'bez role — kiosek jí nic nenabídne'
   return osoba.role.map((r) => r.nazev).join(', ')
-}
-
-function popisOblasti(osoba: Osoba): string {
-  return osoba.oblasti
-    .map((o) => (o.vztah === 'garant' ? `${o.nazev} (garant)` : o.nazev))
-    .join(', ')
 }
 
 function pocetLidi(pocet: number): string {

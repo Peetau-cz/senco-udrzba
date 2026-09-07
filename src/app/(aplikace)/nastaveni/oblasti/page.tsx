@@ -47,8 +47,19 @@ export default async function StrankaOblasti() {
       <div>
         <h1 className="text-2xl font-semibold">Oblasti a garanti</h1>
         <p className="text-muted-foreground">
-          Na oblast se váže zařízení, šablona i zápis v deníku a podle ní se rozhoduje, kdo kam smí.
-          Garanta přiřadíte na kartě osoby.
+          Jak je podnik rozdělený a kdo za co odpovídá. Na oblast se váže zařízení, šablona i zápis
+          v deníku a podle ní se rozhoduje, kdo kam smí. Zařazení lidí se mění na kartě osoby{' '}
+          {smiNaKartyOsob ? (
+            <>
+              v{' '}
+              <Link href="/nastaveni/uzivatele" className="underline underline-offset-2">
+                Uživatelích a rolích
+              </Link>
+              .
+            </>
+          ) : (
+            <>— tu spravuje administrátor.</>
+          )}
         </p>
       </div>
 
