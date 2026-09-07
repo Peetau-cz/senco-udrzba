@@ -1,15 +1,12 @@
 /**
  * Kódy umístění.
  *
- * Kód je klíč, přes který se umístění odkazují v importu (`umisteni.csv`
- * v docs/PRIPRAVA_DAT.md) a v seedech. Uživatel ho nezadává - odvodí se z názvu,
- * aby obrazovka měla jedno políčko místo dvou. Zůstává ale viditelný, protože až
- * se bude nahrávat struktura z Excelu, budou se řádky párovat právě přes něj.
- *
- * Bez závislosti na Reactu i na Supabase, aby šel testovat samostatně.
+ * Odvození z názvu i číslování při shodě jsou společné všem číselníkům a bydlí
+ * v `@/lib/ciselniky/kod`. Tady zůstává jen to, čím se umístění liší: velká
+ * písmena a předsazený kód nadřazeného umístění.
  */
 
-const MAX_DELKA = 40
+import { MAX_DELKA_KODU, odvozKod } from '@/lib/ciselniky/kod'
 
 /**
  * „Hala 2" → `HALA_2`, „Linka B" pod halou → `HALA_2_LINKA_B`.
@@ -18,36 +15,10 @@ const MAX_DELKA = 40
  * Linka B a obojí musí projít, protože kód je v databázi jedinečný.
  */
 export function kodUmisteni(nazev: string, kodNadrazeneho?: string | null): string {
-  const zaklad = nazev
-    .normalize('NFD')
-    // Rozložená diakritika po normalizaci NFD.
-    .replace(/[̀-ͯ]/g, '')
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-
+  const zaklad = odvozKod(nazev, 'velke')
   if (!zaklad) return ''
 
   const cely = kodNadrazeneho ? `${kodNadrazeneho}_${zaklad}` : zaklad
 
-  return cely.slice(0, MAX_DELKA).replace(/_+$/g, '')
-}
-
-/**
- * Přidá pořadové číslo, dokud kód někdo nemá. Používá se, když si dva provozy
- * po očištění názvu sednou na stejný kód („Linka A" a „Linka-A").
- */
-export function volnyKod(zaklad: string, obsazene: readonly string[]): string {
-  if (!zaklad) return ''
-
-  const zabrane = new Set(obsazene)
-  if (!zabrane.has(zaklad)) return zaklad
-
-  for (let poradi = 2; poradi < 100; poradi++) {
-    const pripona = `_${poradi}`
-    const kandidat = zaklad.slice(0, MAX_DELKA - pripona.length) + pripona
-    if (!zabrane.has(kandidat)) return kandidat
-  }
-
-  return ''
+  return cely.slice(0, MAX_DELKA_KODU).replace(/_+$/g, '')
 }

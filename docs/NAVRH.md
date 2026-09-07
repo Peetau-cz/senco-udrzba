@@ -432,6 +432,17 @@ podle názvu nebo inventárního čísla.
 **Zásadní pravidlo z ř. 56:** po přihlášení se nikdy nezobrazuje databáze zařízení.
 Kořenová cesta `/` je vždy dashboard.
 
+**Rozhodnutí ze 7. 9. 2026 — kdo koho přiřazuje k oblasti.** Vztah osoby a oblasti
+(garant / spolupracující) se nastavuje výhradně na kartě osoby. `/nastaveni/oblasti`
+osazenstvo jen ukazuje a odkazuje na karty. Důvody jsou dva: jedno místo pravdy místo
+dvou cest k témuž, a hlavně práva — do `uzivatel_oblast` smí podle politiky z migrace
+0001 zapisovat jen administrátor, kdežto číselník oblastí spravuje i vedoucí údržby.
+Editace z obou stran by na jedné obrazovce míchala dvě úrovně práv.
+
+Oblast bez činného garanta obrazovka označí výstrahou. Vyřazená osoba se za garanta
+nepočítá: člověk, který ve firmě skončil, oblast nepokrývá a restance z ní nemá komu
+chodit — což je přesně ta provozní připravenost, kterou má M6 přinést.
+
 ---
 
 ## 5. Wireframy hlavních obrazovek

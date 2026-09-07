@@ -1,9 +1,10 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { volnyKod } from '@/lib/ciselniky/kod'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import { KOD_KORENE } from '@/lib/umisteni/dotazy'
-import { kodUmisteni, volnyKod } from '@/lib/umisteni/kod'
+import { kodUmisteni } from '@/lib/umisteni/kod'
 
 export type StavUmisteni = { chyba?: string }
 

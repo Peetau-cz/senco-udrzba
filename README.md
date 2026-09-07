@@ -23,10 +23,15 @@ na `/denik`, zápis na `/denik/novy` i rovnou od stroje, oprava a fotky na `/den
 číselník druhů zásahu na `/nastaveni/druhy-zasahu` a záložka Historie na kartě stroje,
 kde se dokončené údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán
 údržby ani plnění matice neovlivňuje (zadání ř. 144).
-Další na řadě je **M6 (audit a správa)** — auditní log, správa uživatelů, oblasti
-a garanti, notifikace. Stránky `/audit`, `/nastaveni/uzivatele` a `/nastaveni/oblasti`
-na něj zatím čekají jako zástupné; tabulka `audit_log` i její RLS existují od migrace
-0001, takže M6 začne spíš u obrazovek než u schématu.
+**M6 (audit a správa)** hotový, čeká na schválení — auditní log na `/audit` s filtry
+a čitelným rozdílem záznamu, správa osob na `/nastaveni/uzivatele` (osoba se odpojila
+od účtu, takže lidé z dílny nepotřebují mail — přihlašují se kartou) a číselník oblastí
+s přehledem garantů na `/nastaveni/oblasti`, který upozorní na oblast bez odpovědné
+osoby. Zástupná obrazovka „Připravuje se" tím zmizela z celé aplikace.
+Migraci si vyžádalo jen odpojení osoby od účtu (0024 a 0025); audit i oblasti stály
+na schématu z 0001. E-mailové notifikace z M6 vypadly rozhodnutím z 27. 8. 2026
+a přijdou až po M7.
+Další na řadě je **M7 (dílna)** — QR štítky, ladění pro tablet, tisk protokolů.
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.

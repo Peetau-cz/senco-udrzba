@@ -6,6 +6,7 @@
  * z migrace 0020 platí i pro volání API napřímo; tohle je kvůli hláškám.
  */
 
+import { odvozKod, volnyKod } from '@/lib/ciselniky/kod'
 import { POVOLENE_TYPY_FOTEK } from '@/lib/plan/fotky'
 
 /**
@@ -79,25 +80,7 @@ export function formatDobu(minut: number | null | undefined): string {
  * co si vedoucí údržby doplní vlastní.
  */
 export function kodDruhu(nazev: string, obsazene: readonly string[] = []): string {
-  const zaklad = nazev
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .slice(0, 40)
-
-  if (!zaklad) return ''
-
-  const zabrane = new Set(obsazene)
-  if (!zabrane.has(zaklad)) return zaklad
-
-  for (let poradi = 2; poradi < 100; poradi += 1) {
-    const kandidat = `${zaklad}_${poradi}`
-    if (!zabrane.has(kandidat)) return kandidat
-  }
-
-  return ''
+  return volnyKod(odvozKod(nazev), obsazene)
 }
 
 /**
