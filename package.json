@@ -17,7 +17,8 @@
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked > src/types/database.types.ts",
     "seed:users": "node --env-file=.env.local scripts/seed-users.mjs",
-    "overit:rls": "node --env-file=.env.local scripts/overit-rls.mjs"
+    "overit:rls": "node --env-file=.env.local scripts/overit-rls.mjs",
+    "mssql:prozkoumej": "node --env-file=.env.local scripts/prozkoumej-mssql.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.2.0",
@@ -43,6 +44,7 @@
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.469.0",
+    "mssql": "^12.7.0",
     "next": "^16.3.3",
     "react": "^19.0.0",
     "react-day-picker": "^9.4.4",
