@@ -1,5 +1,9 @@
 # Přenositelnost: co obnáší přesun mimo Supabase
 
+> **Nahrazeno 7. 9. 2026:** rozhodnuto přesunout aplikaci **mimo Supabase** před M7 —
+> viz `docs/NASAZENI.md`. Níže zůstává původní rozvaha, protože popisuje, co je pro
+> přesun připravené a proč; její závěr „zůstáváme" už neplatí.
+
 Rozhodnutí (12. 8. 2026): **zůstáváme v Supabase Cloud**, ale schéma je připravené tak,
 aby přesun na firemní PostgreSQL byl proveditelný. Motivací je úspora nákladů, termín
 je neurčitý.

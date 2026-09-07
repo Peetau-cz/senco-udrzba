@@ -9,6 +9,7 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PRIPRAVA_DAT.md` | Co musí dodat garanti oblastí, aby šel systém spustit |
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
+| `docs/NASAZENI.md` | **Rozhodnutí ze 7. 9. 2026:** přesun mimo Supabase před M7 — proč, co se mění, dvě zbývající cesty, co rozhodne IT |
 
 Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené — přihlášení,
 role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
@@ -31,7 +32,10 @@ osoby. Zástupná obrazovka „Připravuje se" tím zmizela z celé aplikace.
 Migraci si vyžádalo jen odpojení osoby od účtu (0024 a 0025); audit i oblasti stály
 na schématu z 0001. E-mailové notifikace z M6 vypadly rozhodnutím z 27. 8. 2026
 a přijdou až po M7.
-Další na řadě je **M7 (dílna)** — QR štítky, ladění pro tablet, tisk protokolů.
+**Rozhodnuto 7. 9. 2026:** před M7 se aplikace **přesune mimo Supabase** na firemní server
+(PostgreSQL, nebo SQL Server — rozhodne IT); důvody, rozsah a pořadí prací v `docs/NASAZENI.md`.
+M6 se dokončí ještě na dnešním prostředí jako poslední milník na Supabase.
+Po přesunu přijde **M7 (dílna)** — QR štítky, ladění pro tablet, tisk protokolů.
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
 Plán modulů M0–M7 je v `docs/NAVRH.md` kap. 8.

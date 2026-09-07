@@ -53,7 +53,7 @@ o činnostech zpracování. **Rozhodnutí patří firmě, ne vývojáři.**
 | Prostředí | Účel | Stav |
 |---|---|---|
 | Vývojové (Supabase Cloud, EU) | vývoj a testy | zakládá zákazník, viz plán Krok 0 |
-| Ostré | provoz | zatím nezaloženo |
+| Ostré | provoz | zatím nezaloženo — **nebude v Supabase**, viz `docs/NASAZENI.md` (7. 9. 2026) |
 
 Zásady:
 - `service_role` klíč se používá **výhradně** v lokálním seed skriptu, nikdy v aplikačním
