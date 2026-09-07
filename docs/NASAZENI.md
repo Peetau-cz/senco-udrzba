@@ -5,8 +5,7 @@ z 12. 8. 2026 „zůstáváme v Supabase Cloud" (`docs/PORTABILITA.md`). Přesun
 samostatná fáze **po dokončení M6 a před M7**, dokud jsou v databázi jen testovací data.
 
 Co se ještě nerozhodlo: **PostgreSQL, nebo Microsoft SQL Server.** Rozhodne IT podle toho,
-co je ochotné provozovat. Podklad k tomu jednání je stránka _Kde poběží systém údržby_
-(odkaz v závěru); tento dokument je její závazná podoba v repozitáři.
+co je ochotné provozovat. Tento dokument je podklad k tomu jednání.
 
 ---
 
@@ -138,8 +137,6 @@ proč se přesun dělá teď a ne po M7.
 
 ## Odkazy
 
-- Podklad k jednání s IT (stránka, 7. 9. 2026):
-  <https://claude.ai/code/artifact/a8094138-0553-48d7-8982-f3faac6be869>
 - `docs/PORTABILITA.md` — co bylo pro přesun připravené a proč (původní rozvaha z 12. 8.)
 - `docs/PROVOZ.md` — zálohy, osobní údaje, prostředí
 - Pokus s vlastním přihlášením nad Supabase (28. 8. 2026) prokázal, že oprávnění
