@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, Search, X } from 'lucide-react'
@@ -29,6 +29,17 @@ import { Select } from '@/components/ui/select'
  * mezi slovy - kdo píše souvisle, počká si jednou na konci, ne po každém písmenu.
  */
 const PRODLEVA_MS = 300
+
+/**
+ * Trojice pro `useSyncExternalStore`, kterou se pozná oživená stránka.
+ *
+ * Jsou to konstanty, ne vnořené funkce: kdyby se vytvářely při každém
+ * překreslení, React by pokaždé zakládal nový odběr. Odebírat není co - hodnota
+ * se po oživení stránky už nikdy nezmění - takže odhlašovací funkce nic nedělá.
+ */
+const BEZ_ODBERU = () => () => {}
+const ZIVA_NA_KLIENTU = () => true
+const ZIVA_NA_SERVERU = () => false
 
 export type HodnotyFiltru = {
   oblast?: string
@@ -77,11 +88,15 @@ export function HlavickaTabulkyZarizeni({
     [],
   )
 
-  // Doběhne až po oživení stránky v prohlížeči, na serveru zůstane false.
-  // Tím se pozná, jestli je javascript k dispozici - a podle toho, jestli je
-  // tlačítko lupy k něčemu, nebo je to jen zbytečný ovládací prvek navíc.
-  const [jeZiva, setJeZiva] = useState(false)
-  useEffect(() => setJeZiva(true), [])
+  // Na serveru false, po oživení v prohlížeči true. Tím se pozná, jestli je
+  // javascript k dispozici - a podle toho, jestli je tlačítko lupy k něčemu,
+  // nebo je to jen zbytečný ovládací prvek navíc.
+  //
+  // Dřív to byl useEffect, který hned volal setState. Next 16 to zakazuje
+  // pravidlem react-hooks/set-state-in-effect, protože takový zápis vyvolá
+  // druhé překreslení navíc. useSyncExternalStore říká totéž rovnou: tohle je
+  // hodnota na serveru, tohle na klientovi.
+  const jeZiva = useSyncExternalStore(BEZ_ODBERU, ZIVA_NA_KLIENTU, ZIVA_NA_SERVERU)
 
   function adresa(dalsi: HodnotyFiltru): string {
     const parametry = new URLSearchParams()

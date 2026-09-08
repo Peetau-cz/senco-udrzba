@@ -16,8 +16,8 @@ Zadání neurčuje šest věcí, které přímo ovlivňují datový model. Všec
 | P1 | Základ intervalu údržby | **POTVRZENO: pouze kalendářní intervaly** (dny, týdny, měsíce, roky) | Motohodiny se neevidují. Výpočet termínu je uzavřen v jediné SQL funkci `dalsi_termin()`, aby případné pozdější doplnění motohodin byla lokální změna, ne přepis plánovače. |
 | P2 | Výpočet dalšího termínu | **POTVRZENO: nastavitelné na úkonu, výchozí pevný kalendář** (od plánovaného termínu) | Původně se počítalo s plovoucí variantou, zadavatel ale při vkládání harmonogramu CNC upřesnil, že termín je vždy k pevně danému datu. Plovoucí varianta zůstává volitelná na úkonu. Sloupec `interval_zaklad`, výchozí hodnotu mění migrace `0009`. |
 | P3 | Definice „Plnění %" | **POTVRZENO:** `splněno / (splněno + po termínu)` za kalendářní měsíc | Údržba dokončená po termínu se počítá jako *po termínu*. Úkony, jejichž termín ještě nenastal, se nepočítají. Sedí na příklad v zadání (124 / 126 = 98 %). |
-| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. |
-| P5 | Kde poběží data | **POTVRZENO:** Supabase Cloud, **region EU** | Vývoj běží rovnou proti cloudovému vývojovému projektu, bez Dockeru. Self-hosting zůstává možný bez zásahu do kódu. |
+| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. **7. 9. 2026: nahrazeno** — dílna mail nemá, přihlášení bude vlastní (mail + heslo, karta); viz `docs/NASAZENI.md`. |
+| P5 | Kde poběží data | **POTVRZENO:** Supabase Cloud, **region EU** | Vývoj běží rovnou proti cloudovému vývojovému projektu, bez Dockeru. Self-hosting zůstává možný bez zásahu do kódu. **7. 9. 2026: nahrazeno** — ostrý provoz bude mimo Supabase na firemním serveru (PostgreSQL nebo SQL Server podle IT); viz `docs/NASAZENI.md`. |
 | P6 | Migrace ze stávajících Excelů | **POTVRZENO:** Import **zařízení a šablon** přes CSV; historii nepřevádět, staré Excely archivovat jako přílohu | Import nekonzistentní historie by znehodnotil KPI plnění hned na startu. |
 
 ### Rozhodnutí o náběhu
@@ -432,6 +432,17 @@ podle názvu nebo inventárního čísla.
 **Zásadní pravidlo z ř. 56:** po přihlášení se nikdy nezobrazuje databáze zařízení.
 Kořenová cesta `/` je vždy dashboard.
 
+**Rozhodnutí ze 7. 9. 2026 — kdo koho přiřazuje k oblasti.** Vztah osoby a oblasti
+(garant / spolupracující) se nastavuje výhradně na kartě osoby. `/nastaveni/oblasti`
+osazenstvo jen ukazuje a odkazuje na karty. Důvody jsou dva: jedno místo pravdy místo
+dvou cest k témuž, a hlavně práva — do `uzivatel_oblast` smí podle politiky z migrace
+0001 zapisovat jen administrátor, kdežto číselník oblastí spravuje i vedoucí údržby.
+Editace z obou stran by na jedné obrazovce míchala dvě úrovně práv.
+
+Oblast bez činného garanta obrazovka označí výstrahou. Vyřazená osoba se za garanta
+nepočítá: člověk, který ve firmě skončil, oblast nepokrývá a restance z ní nemá komu
+chodit — což je přesně ta provozní připravenost, kterou má M6 přinést.
+
 ---
 
 ## 5. Wireframy hlavních obrazovek
@@ -647,7 +658,7 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M3** Plán a provedení | plánovač, zakázky, checklist, foto, přepočet termínů | technik provede reálnou údržbu |
 | **M4** Dashboard a plnění | KPI, dnešní plán, po termínu, matice plnění, export | vedoucí a management mají přehled |
 | **M5** Deník a historie | neplánované zásahy, sjednocená historie | kompletní historie zařízení |
-| **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti, notifikace | provozní připravenost |
+| **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti | provozní připravenost |
 | **M7** Dílna | QR štítky, ladění pro tablet, tisk protokolů | nasazení do provozu |
 
 **Až po M7** (rozhodnutí uživatele z 19. 8. 2026):
@@ -656,19 +667,24 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 |---|---|---|
 | Import z CSV | hromadné nahrání zařízení a šablon (rozhodnutí P6) | Odkládal se dvakrát — nejdřív za M2, pak za M3, aby vznikl jedním průchodem pro obojí. Teď už obojí existuje, ale ruční zadání pěti strojů je rychlejší než čekat na importér. Ten se vyplatí až u zbytku podniku. |
 | Naplnění reálnými daty | inventární čísla, výrobci, modely, definice parametrů od garantů (`docs/PRIPRAVA_DAT.md`) | Nebrzdí kód a nemá smysl to dělat dvakrát. Data se nasypou až nad hotovým systémem, ideálně už importérem. |
+| E-mailové notifikace | denní souhrn restancí garantovi, eskalace vedoucímu po 7 dnech | **Vyňato z M6 rozhodnutím z 27. 8. 2026.** Podoba i architektura jsou navržené a odsouhlasené (viz `docs/PROVOZ.md` kap. 4), staví se ale až nakonec. |
 
 Rozšíření mimo rozsah zadání, se kterými model počítá, ale neimplementují se teď:
-náhradní díly a sklad, evidence prostojů (MTBF/MTTR), schvalování údržby druhou osobou,
-offline režim pro halu se slabým signálem.
+náhradní díly a sklad, evidence prostojů (MTBF/MTTR).
+
+**Zamítnuto 27. 8. 2026:** schvalování údržby druhou osobou a offline režim pro halu.
+Model je na obojí připravený, kdyby se rozhodnutí někdy otočilo, ale nestaví se to.
 
 ---
 
 ## 9. Otevřené body
 
 1. Potvrdit nebo opravit předpoklady **P1–P6** z kapitoly 0.
-2. Rozhodnout o notifikacích — kdo a jak se dozví o údržbě po termínu.
-3. Určit, zda se má provedená údržba schvalovat druhou osobou (u některých revizí bývá nutné).
-4. Upřesnit, zda je potřeba offline režim pro tablety ve výrobní hale.
+2. **Notifikace — podoba rozhodnuta 27. 8. 2026, realizace odložena na závěr.** Už
+   neblokují M6. Zbývá jediné: čím se maily odešlou (firemní SMTP vs. externí
+   služba). Viz `docs/PROVOZ.md` kap. 4.
+3. ~~Schvalování údržby druhou osobou~~ — **zamítnuto 27. 8. 2026**, nestaví se.
+4. ~~Offline režim pro tablety v hale~~ — **zamítnuto 27. 8. 2026**, nestaví se.
 5. Dodat vzorek stávajících Excelů — podle nich se navrhne importér a ověří, že model
    pokryje reálná data.
 

@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { idPrihlaseneOsoby } from '@/lib/auth/session'
 import { cestaFotkyZasahu, overDobu, overPopis, pragskyCasNaIso } from '@/lib/denik/zasah'
 import { overFotku } from '@/lib/plan/fotky'
 import { NADOBA_DENIKU, smazSoubory, ulozSoubor } from '@/lib/storage'
@@ -248,14 +249,11 @@ async function nahrajKZapisu(zapisId: string, fotka: File): Promise<string | nul
   if (chybaUlozeni) return chybaUlozeni
 
   const supabase = await vytvorServerovehoKlienta()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
 
   const { error } = await supabase.from('denik_foto').insert({
     zaznam_id: zapisId,
     storage_path: cesta,
-    nahral_id: user?.id ?? null,
+    nahral_id: await idPrihlaseneOsoby(),
   })
 
   if (error) {

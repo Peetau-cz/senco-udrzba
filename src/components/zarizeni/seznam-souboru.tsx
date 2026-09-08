@@ -6,7 +6,10 @@ import { DRUHY_SOUBORU, formatVelikost, jeObrazek } from '@/lib/zarizeni/soubory
 
 function celeJmeno(nahral: SouborZarizeni['nahral']): string {
   if (!nahral) return 'neznámý'
-  return [nahral.jmeno, nahral.prijmeni].filter(Boolean).join(' ').trim() || nahral.email
+  // Mail už nemusí existovat (migrace 0024), takže sám o sobě není záchrana.
+  return (
+    [nahral.jmeno, nahral.prijmeni].filter(Boolean).join(' ').trim() || nahral.email || 'neznámý'
+  )
 }
 
 /**

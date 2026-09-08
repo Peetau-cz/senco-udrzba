@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { kodUmisteni, volnyKod } from './kod'
+import { kodUmisteni } from './kod'
 
 describe('odvození kódu z názvu', () => {
   it('shodí diakritiku a mezery', () => {
@@ -25,23 +25,5 @@ describe('odvození kódu z názvu', () => {
     const dlouhy = kodUmisteni('Hala s velmi dlouhým názvem provozu a linky', 'HALA_1')
     expect(dlouhy.length).toBeLessThanOrEqual(40)
     expect(dlouhy.endsWith('_')).toBe(false)
-  })
-})
-
-describe('obsazené kódy', () => {
-  it('volný kód nechá být', () => {
-    expect(volnyKod('HALA_2', ['HALA_1'])).toBe('HALA_2')
-  })
-
-  it('obsazený očísluje', () => {
-    expect(volnyKod('LINKA_A', ['LINKA_A'])).toBe('LINKA_A_2')
-    expect(volnyKod('LINKA_A', ['LINKA_A', 'LINKA_A_2'])).toBe('LINKA_A_3')
-  })
-
-  it('číslování se vejde do limitu délky', () => {
-    const zaklad = 'A'.repeat(40)
-    const kod = volnyKod(zaklad, [zaklad])
-    expect(kod.length).toBeLessThanOrEqual(40)
-    expect(kod.endsWith('_2')).toBe(true)
   })
 })

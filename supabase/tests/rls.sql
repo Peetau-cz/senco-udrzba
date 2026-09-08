@@ -24,7 +24,9 @@ declare
   v_typ_cnc        uuid;
   v_typ_strojni    uuid;
   v_pocet          integer;
+  v_audit_celkem   integer;
   v_proslo         boolean;
+  v_nova_oblast    uuid;
 begin
   select id into v_cnc        from auth.users where email = 'cnc@senco.test';
   select id into v_vedouci    from auth.users where email = 'vedouci@senco.test';
@@ -111,6 +113,63 @@ begin
 
   if v_proslo then
     raise exception 'Podařilo se smazat z audit_log. Neměnnost auditu nedrží.';
+  end if;
+
+  execute 'reset role';
+
+  -- ---------------------------------------------------------------------------
+  -- 4b. Auditní log čte jen administrátor, vedoucí údržby a management
+  --     (matice oprávnění kap. 3.1, politika audit_log_select).
+  --
+  --     Nemazatelnost výš a viditelnost tady jsou dvě různé věci: DELETE drží
+  --     odebrané právo, čtení drží RLS. Test na jedno o druhém nic neříká.
+  -- ---------------------------------------------------------------------------
+  select count(*) into v_audit_celkem from public.audit_log;
+
+  if v_audit_celkem = 0 then
+    raise exception 'audit_log je prázdný, test čtení auditu by nic neověřil. Spusťte seed.';
+  end if;
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_cnc, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> 0 then
+    raise exception 'Specialista CNC vidí % záznamů auditu, očekává se 0.', v_pocet;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_udrzbar, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> 0 then
+    raise exception 'Údržbář vidí % záznamů auditu, očekává se 0.', v_pocet;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_vedouci, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> v_audit_celkem then
+    raise exception 'Vedoucí údržby vidí % záznamů auditu, očekává se %.', v_pocet, v_audit_celkem;
+  end if;
+
+  execute 'reset role';
+
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_management, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  select count(*) into v_pocet from public.audit_log;
+  if v_pocet <> v_audit_celkem then
+    raise exception 'Management vidí % záznamů auditu, očekává se %.', v_pocet, v_audit_celkem;
   end if;
 
   execute 'reset role';
@@ -251,7 +310,69 @@ begin
 
   execute 'reset role';
 
-  raise notice 'RLS test prošel: všech 10 kontrol v pořádku.';
+
+  -- ---------------------------------------------------------------------------
+  -- 11. Garant oblasti do číselníku oblastí nesahá (matice kap. 3.1)
+  --
+  -- Specialista CNC svou oblast spravuje, ale zakládat nové oblasti je správa
+  -- číselníků - ta patří administrátorovi a vedoucímu údržby.
+  -- ---------------------------------------------------------------------------
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_cnc, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  begin
+    insert into public.oblast (kod, nazev, poradi)
+    values ('rls_test_cnc', 'RLS test - oblast od garanta', 99);
+    v_proslo := true;
+  exception
+    when others then
+      v_proslo := false;
+  end;
+
+  if v_proslo then
+    raise exception 'Specialista CNC založil oblast. Politika oblast_insert nectí matici oprávnění.';
+  end if;
+
+  -- Přejmenovat cizí oblast také nesmí. Zamítnutý UPDATE nehlásí chybu,
+  -- jen nezmění řádek - proto se počítají dotčené řádky.
+  update public.oblast set nazev = 'RLS test - přejmenováno' where id = v_oblast_strojni;
+  get diagnostics v_pocet = row_count;
+
+  if v_pocet <> 0 then
+    raise exception 'Specialista CNC přejmenoval cizí oblast. Politika oblast_update neplatí.';
+  end if;
+
+  execute 'reset role';
+
+  -- ---------------------------------------------------------------------------
+  -- 12. Vedoucí údržby oblast založí, ale smazat ji smí jen administrátor
+  --
+  -- Rozdíl je záměr z migrace 0001: oblast drží zařízení i historii, takže její
+  -- zmizení je vážnější krok než založení.
+  -- ---------------------------------------------------------------------------
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', v_vedouci, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+
+  insert into public.oblast (kod, nazev, poradi)
+  values ('rls_test_vedouci', 'RLS test - oblast od vedoucího', 99)
+  returning id into v_nova_oblast;
+
+  if v_nova_oblast is null then
+    raise exception 'Vedoucí údržby nezaložil oblast, přestože číselníky spravovat smí.';
+  end if;
+
+  delete from public.oblast where id = v_nova_oblast;
+  get diagnostics v_pocet = row_count;
+
+  if v_pocet <> 0 then
+    raise exception 'Vedoucí údržby smazal oblast. Politika oblast_delete má pouštět jen administrátora.';
+  end if;
+
+  execute 'reset role';
+
+  raise notice 'RLS test prošel: všech 12 kontrol v pořádku.';
 end;
 $$;
 

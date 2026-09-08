@@ -262,7 +262,7 @@ export async function nactiCiselniky() {
     nactiNabidkuUmisteni(),
     supabase
       .from('profil')
-      .select('id, jmeno, prijmeni, email')
+      .select('id, jmeno, prijmeni, email, osobni_cislo')
       .eq('aktivni', true)
       .order('prijmeni'),
   ])
@@ -270,9 +270,15 @@ export async function nactiCiselniky() {
   return {
     typy: typy.data ?? [],
     umisteni,
+    // Od migrace 0024 nemusí mít osoba mail - lidé z dílny žádný nemají.
+    // Osobní číslo je proto poslední rozumná záchrana, než se sáhne po výplni.
     osoby: (osoby.data ?? []).map((o) => ({
       id: o.id,
-      jmeno: [o.jmeno, o.prijmeni].filter(Boolean).join(' ').trim() || o.email,
+      jmeno:
+        [o.jmeno, o.prijmeni].filter(Boolean).join(' ').trim() ||
+        o.email ||
+        o.osobni_cislo ||
+        'bez jména',
     })),
   }
 }

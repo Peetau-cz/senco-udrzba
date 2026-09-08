@@ -26,7 +26,8 @@ insert into public.role (kod, nazev, popis, poradi) values
   ('udrzbar',             'Údržbář',            'Provádí údržbu, zapisuje do provozního deníku.',               5),
   ('vedouci_lakovny',     'Vedoucí lakovny',    'Garant oblasti lakování.',                                     6),
   ('pracovnik_skladu',    'Pracovník skladu',   'Garant oblasti VZV.',                                          7),
-  ('management',          'Management',         'Pouze čtení. Přístup ke všem oblastem.',                       8)
+  ('management',          'Management',         'Pouze čtení. Přístup ke všem oblastem.',                       8),
+  ('kiosek',              'Kiosek',             'Účet dotykového zařízení v dílně. Odklikává zakázky a zapisuje do deníku ve své oblasti.', 9)
 on conflict (kod) do update
   set nazev = excluded.nazev,
       popis = excluded.popis,

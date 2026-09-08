@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   KODY_ROLI,
+  KODY_ROLI_LIDI,
   maPravo,
   maPristupKeVsemOblastem,
   muzeZapisovat,
@@ -121,11 +122,18 @@ describe('správa uživatelů', () => {
 })
 
 describe('menu', () => {
-  it('každá role vidí alespoň dashboard', () => {
-    for (const kod of KODY_ROLI) {
+  it('každá lidská role vidí alespoň dashboard', () => {
+    for (const kod of KODY_ROLI_LIDI) {
       const polozky = polozkyMenu([kod])
       expect(polozky.some((p) => p.modul === 'dashboard'), kod).toBe(true)
     }
+  })
+
+  // Kiosek je účet zařízení v dílně, ne člověk. Do webové části nepatří vůbec -
+  // patří na /kiosek. Kdyby mu tady něco přibylo, znamená to, že se role
+  // připletla mezi „všechny" v matici oprávnění.
+  it('kiosek nevidí ve webovém menu nic', () => {
+    expect(polozkyMenu(['kiosek'])).toEqual([])
   })
 
   it('management nevidí uživatele ani číselníky, ale vidí audit', () => {
@@ -140,7 +148,7 @@ describe('menu', () => {
   })
 
   it('dashboard je vždy první položkou (zadání ř. 56)', () => {
-    for (const kod of KODY_ROLI) {
+    for (const kod of KODY_ROLI_LIDI) {
       expect(polozkyMenu([kod])[0]?.href, kod).toBe('/')
     }
   })
