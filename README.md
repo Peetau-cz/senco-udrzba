@@ -9,7 +9,8 @@ Centrální systém řízení údržby výrobní společnosti SENCO Příbram.
 | `docs/PRIPRAVA_DAT.md` | Co musí dodat garanti oblastí, aby šel systém spustit |
 | `docs/PROVOZ.md` | Provozní rozhodnutí — zálohy, osobní údaje, prostředí, notifikace |
 | `docs/PORTABILITA.md` | Co by stál přesun mimo Supabase a co je pro něj připravené |
-| `docs/NASAZENI.md` | **Rozhodnutí ze 7. 9. 2026:** přesun mimo Supabase před M7 — proč, co se mění, dvě zbývající cesty, co rozhodne IT |
+| `docs/NASAZENI.md` | **Přesun ze Supabase na SQL Server** (rozhodnuto 7.–8. 9. 2026) — proč, cílová podoba, žádost a otázky pro IT, postup po kolech, pasti |
+| `mssql/README.md` | Databáze na SQL Serveru — migrace, seed, testy a jak se pouštějí |
 
 Stav: **M0 (základ)** a **M1 (evidence zařízení)** hotové a schválené — přihlášení,
 role a oprávnění vynucená v databázi, karty strojů, přílohy, typy s vlastními
@@ -24,7 +25,7 @@ na `/denik`, zápis na `/denik/novy` i rovnou od stroje, oprava a fotky na `/den
 číselník druhů zásahu na `/nastaveni/druhy-zasahu` a záložka Historie na kartě stroje,
 kde se dokončené údržby a zápisy z deníku potkávají v jedné časové ose. Deník plán
 údržby ani plnění matice neovlivňuje (zadání ř. 144).
-**M6 (audit a správa)** hotový, čeká na schválení — auditní log na `/audit` s filtry
+**M6 (audit a správa)** sloučený 8. 9. 2026 (PR #12) — auditní log na `/audit` s filtry
 a čitelným rozdílem záznamu, správa osob na `/nastaveni/uzivatele` (osoba se odpojila
 od účtu, takže lidé z dílny nepotřebují mail — přihlašují se kartou) a číselník oblastí
 s přehledem garantů na `/nastaveni/oblasti`, který upozorní na oblast bez odpovědné
@@ -32,9 +33,11 @@ osoby. Zástupná obrazovka „Připravuje se" tím zmizela z celé aplikace.
 Migraci si vyžádalo jen odpojení osoby od účtu (0024 a 0025); audit i oblasti stály
 na schématu z 0001. E-mailové notifikace z M6 vypadly rozhodnutím z 27. 8. 2026
 a přijdou až po M7.
-**Rozhodnuto 7. 9. 2026:** před M7 se aplikace **přesune mimo Supabase** na firemní server
-(PostgreSQL, nebo SQL Server — rozhodne IT); důvody, rozsah a pořadí prací v `docs/NASAZENI.md`.
-M6 se dokončí ještě na dnešním prostředí jako poslední milník na Supabase.
+**Probíhá přesun ze Supabase na Microsoft SQL Server** (rozhodnuto 7.–8. 9. 2026, větev
+`presun-sql-server`; poslední stav se Supabase je na větvi `supabase`). Důvody, cílová
+podoba, žádost pro IT a postup po kolech R0–R8 jsou v `docs/NASAZENI.md`. Hotové je kolo
+R0 (spouštěče `npm run mssql:*`, `mssql/README.md`); další kola čekají na vývojovou
+databázi od IT. Do dokončení přesunu běží aplikace dál nad Supabase — návod níž platí.
 Po přesunu přijde **M7 (dílna)** — QR štítky, ladění pro tablet, tisk protokolů.
 Import zařízení a šablon z CSV (rozhodnutí P6) i naplnění reálnými daty od garantů
 přijdou **až po M7** — ruční zadání pěti strojů je rychlejší než čekat na importér.
