@@ -25,6 +25,17 @@ npm run mssql:testy     # ověření
 Nad databází od IT se `mssql:init` nepouští; co má IT založit, vypíše
 `npm run mssql:init -- --jen-vypis`.
 
+## Kontrola syntaxe bez serveru
+
+```bash
+npm run mssql:syntaxe
+```
+
+Projde všechny `.sql` v tomhle adresáři parserem ScriptDom ze SQL Server Management
+Studia (gramatika SQL Serveru 2022). Pozná jen syntaxi, ne to, jestli tabulka nebo
+sloupec existují — na to je potřeba databáze a `npm run mssql:testy`. Hodí se, když se
+skripty píšou dřív, než je server k dispozici.
+
 ## Pravidla pro migrace
 
 - Jeden soubor = jedna transakce. `ALTER DATABASE` a jiné příkazy, které v transakci

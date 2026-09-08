@@ -24,7 +24,8 @@
     "mssql:migrace": "node --env-file=.env.local scripts/mssql-migrace.mjs",
     "mssql:seed": "node --env-file=.env.local scripts/mssql-seed.mjs",
     "mssql:testy": "node --env-file=.env.local scripts/mssql-testy.mjs",
-    "mssql:reset": "node --env-file=.env.local scripts/mssql-reset.mjs"
+    "mssql:reset": "node --env-file=.env.local scripts/mssql-reset.mjs",
+    "mssql:syntaxe": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/sql-syntaxe.ps1"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.2.0",
