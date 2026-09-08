@@ -14,11 +14,17 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:skripty": "node --test \"scripts/**/*.test.mjs\"",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --linked > src/types/database.types.ts",
     "seed:users": "node --env-file=.env.local scripts/seed-users.mjs",
     "overit:rls": "node --env-file=.env.local scripts/overit-rls.mjs",
-    "mssql:prozkoumej": "node --env-file=.env.local scripts/prozkoumej-mssql.mjs"
+    "mssql:prozkoumej": "node --env-file=.env.local scripts/prozkoumej-mssql.mjs",
+    "mssql:init": "node --env-file=.env.local scripts/mssql-init.mjs",
+    "mssql:migrace": "node --env-file=.env.local scripts/mssql-migrace.mjs",
+    "mssql:seed": "node --env-file=.env.local scripts/mssql-seed.mjs",
+    "mssql:testy": "node --env-file=.env.local scripts/mssql-testy.mjs",
+    "mssql:reset": "node --env-file=.env.local scripts/mssql-reset.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.2.0",
@@ -43,6 +49,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "exceljs": "^4.4.0",
+    "kysely": "^0.29.5",
     "lucide-react": "^0.469.0",
     "mssql": "^12.7.0",
     "next": "^16.3.3",
@@ -55,6 +62,8 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss": "^3.4.17",
     "tailwindcss-animate": "^1.0.7",
+    "tarn": "^3.1.2",
+    "tedious": "^20.0.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
