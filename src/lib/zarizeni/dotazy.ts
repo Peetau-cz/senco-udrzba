@@ -7,11 +7,12 @@
  * druhá pravda, kterou by nikdo neudržoval (zásada R1).
  */
 
-import type { Database } from '@/types/database.types'
+import type { Database, Json } from '@/types/database.types'
 import { NADOBA_ZARIZENI, odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
-import { nactiNabidkuUmisteni } from '@/lib/umisteni/dotazy'
+import { nactiNabidkuUmisteni, type NabidkaUmisteni } from '@/lib/umisteni/dotazy'
 import { STAVY_ZARIZENI, type StavZarizeni } from '@/lib/zarizeni/formular'
+import type { DruhSouboru } from '@/lib/zarizeni/soubory'
 
 /** Stav přichází z adresy, kde může být cokoli. Neznámý se prostě nefiltruje. */
 function jeStav(hodnota: string): hodnota is StavZarizeni {
@@ -28,6 +29,30 @@ const SLOUPCE_SEZNAMU = `
   umisteni (id, nazev, nadrazene:nadrazene_id (nazev, kod))
 ` as const
 
+/**
+ * Řádek seznamu zařízení. Tvar, na který se spoléhají komponenty - při výměně
+ * datové vrstvy se nemění, mění se jen dotaz, který ho plní.
+ *
+ * Typ a oblast jsou povinné vazby, proto nikdy nejsou null. Umístění stroj mít
+ * nemusí a hala nad provozem taky ne.
+ */
+export type ZarizeniVSeznamu = {
+  id: string
+  nazev: string
+  inventarni_cislo: string | null
+  stav: StavZarizeni
+  vyrobce: string | null
+  model: string | null
+  rok_vyroby: number | null
+  typ: { id: string; kod: string; nazev: string }
+  oblast: { id: string; kod: string; nazev: string }
+  umisteni: {
+    id: string
+    nazev: string
+    nadrazene: { nazev: string; kod: string } | null
+  } | null
+}
+
 const SLOUPCE_KARTY = `
   id, nazev, inventarni_cislo, stav, vyrobce, model, vyrobni_cislo, rok_vyroby,
   parametry, poznamka, vytvoreno_at, zmeneno_at,
@@ -37,6 +62,35 @@ const SLOUPCE_KARTY = `
   umisteni (id, kod, nazev, nadrazene:nadrazene_id (nazev, kod)),
   odpovedny:profil (id, jmeno, prijmeni, email)
 ` as const
+
+/** Karta zařízení. Tvar, na který se spoléhají komponenty - při výměně datové vrstvy se nemění. */
+export type Zarizeni = {
+  id: string
+  nazev: string
+  inventarni_cislo: string | null
+  stav: StavZarizeni
+  vyrobce: string | null
+  model: string | null
+  vyrobni_cislo: string | null
+  rok_vyroby: number | null
+  parametry: Json
+  poznamka: string | null
+  vytvoreno_at: string
+  zmeneno_at: string
+  oblast_id: string
+  typ_zarizeni_id: string
+  umisteni_id: string | null
+  odpovedna_osoba_id: string | null
+  typ: { id: string; kod: string; nazev: string; schema_parametru: Json }
+  oblast: { id: string; kod: string; nazev: string }
+  umisteni: {
+    id: string
+    kod: string
+    nazev: string
+    nadrazene: { nazev: string; kod: string } | null
+  } | null
+  odpovedny: { id: string; jmeno: string; prijmeni: string; email: string | null } | null
+}
 
 /**
  * Filtr přebírá identifikátory, ne kódy. Kód z adresy (`?oblast=cnc`) na id
@@ -68,7 +122,7 @@ function ocistiHledani(text: string): string {
     .slice(0, 80)
 }
 
-export async function nactiSeznamZarizeni(filtr: FiltrZarizeni) {
+export async function nactiSeznamZarizeni(filtr: FiltrZarizeni): Promise<ZarizeniVSeznamu[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   let dotaz = supabase.from('zarizeni').select(SLOUPCE_SEZNAMU).order('nazev')
@@ -164,7 +218,7 @@ export async function idsZarizeniSNedodelanymPlanem(): Promise<string[]> {
   return (data ?? []).map((r) => r.zarizeni_id)
 }
 
-export async function nactiZarizeni(id: string) {
+export async function nactiZarizeni(id: string): Promise<Zarizeni | null> {
   const supabase = await vytvorServerovehoKlienta()
 
   // maybeSingle, ne single: cizí zařízení RLS odfiltruje a dotaz vrátí prázdno.
@@ -186,7 +240,26 @@ const SLOUPCE_TYPU = `
   zarizeni (count)
 ` as const
 
-export async function nactiTypy() {
+/**
+ * Typ zařízení, v seznamu i na kartě. Tvar, na který se spoléhají komponenty -
+ * při výměně datové vrstvy se nemění.
+ */
+export type TypZarizeni = {
+  id: string
+  kod: string
+  nazev: string
+  popis: string | null
+  aktivni: boolean
+  oblast_id: string
+  schema_parametru: Json
+  vytvoreno_at: string
+  zmeneno_at: string
+  oblast: { id: string; kod: string; nazev: string }
+  /** Počet strojů typu. Vnořený součet chodí jako pole s jedním prvkem, viz `pocetZarizeni`. */
+  zarizeni: { count: number }[]
+}
+
+export async function nactiTypy(): Promise<TypZarizeni[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase.from('typ_zarizeni').select(SLOUPCE_TYPU).order('nazev')
@@ -196,7 +269,7 @@ export async function nactiTypy() {
   return data ?? []
 }
 
-export async function nactiTyp(id: string) {
+export async function nactiTyp(id: string): Promise<TypZarizeni | null> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
@@ -210,11 +283,23 @@ export async function nactiTyp(id: string) {
   return data
 }
 
-export type TypZarizeni = NonNullable<Awaited<ReturnType<typeof nactiTyp>>>
-
 /** Vnořený součet chodí jako pole s jedním prvkem, ne jako číslo. */
 export function pocetZarizeni(typ: { zarizeni?: { count: number }[] | null }): number {
   return typ.zarizeni?.[0]?.count ?? 0
+}
+
+/** Příloha karty. Tvar, na který se spoléhají komponenty - při výměně datové vrstvy se nemění. */
+export type SouborZarizeni = {
+  id: string
+  druh: DruhSouboru
+  nazev: string
+  cesta: string
+  mime: string | null
+  velikost_b: number | null
+  vytvoreno_at: string
+  nahral: { jmeno: string; prijmeni: string; email: string | null } | null
+  /** Podepsaný odkaz ke stažení. Null, když se ho nepodařilo vydat - soubor se i tak vypíše. */
+  odkaz: string | null
 }
 
 /**
@@ -223,7 +308,7 @@ export function pocetZarizeni(typ: { zarizeni?: { count: number }[] | null }): n
  * Nádoba je neveřejná, takže se ke každému souboru vydává podepsaný odkaz.
  * Jak se podepisuje, ví `lib/storage` - sem to nepatří (PORTABILITA pravidlo 5).
  */
-export async function nactiSouboryZarizeni(zarizeniId: string) {
+export async function nactiSouboryZarizeni(zarizeniId: string): Promise<SouborZarizeni[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
@@ -239,7 +324,10 @@ export async function nactiSouboryZarizeni(zarizeniId: string) {
   const radky = data ?? []
   if (radky.length === 0) return []
 
-  const odkazy = await odkazyKeStazeni(NADOBA_ZARIZENI, radky.map((r) => r.cesta))
+  const odkazy = await odkazyKeStazeni(
+    NADOBA_ZARIZENI,
+    radky.map((r) => r.cesta),
+  )
 
   return radky.map((radek) => ({
     ...radek,
@@ -247,10 +335,19 @@ export async function nactiSouboryZarizeni(zarizeniId: string) {
   }))
 }
 
-export type SouborZarizeni = Awaited<ReturnType<typeof nactiSouboryZarizeni>>[number]
+/**
+ * Nabídky pro formulář zařízení a filtr seznamu. Tvar, na který se spoléhají
+ * komponenty - při výměně datové vrstvy se nemění.
+ */
+export type CiselnikyZarizeni = {
+  typy: { id: string; kod: string; nazev: string; oblast_id: string; schema_parametru: Json }[]
+  umisteni: NabidkaUmisteni
+  /** Jméno je už složené k zobrazení, viz `nactiCiselniky`. */
+  osoby: { id: string; jmeno: string }[]
+}
 
 /** Číselníky pro formulář i filtry. Vše prochází RLS, takže cizí oblast nenabídne. */
-export async function nactiCiselniky() {
+export async function nactiCiselniky(): Promise<CiselnikyZarizeni> {
   const supabase = await vytvorServerovehoKlienta()
 
   const [typy, umisteni, osoby] = await Promise.all([

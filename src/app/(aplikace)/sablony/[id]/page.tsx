@@ -24,6 +24,7 @@ import {
   nactiZarizeniProPrirazeni,
   navrhVerze,
   pocetUkonu,
+  type VerzeSablony,
 } from '@/lib/sablony/dotazy'
 import {
   aktivujVerzi,
@@ -335,7 +336,7 @@ async function ZalozkaVerze({
   smiSpravovat,
 }: {
   sablonaId: string
-  verze: Awaited<ReturnType<typeof nactiVerze>>
+  verze: VerzeSablony[]
   smiSpravovat: boolean
 }) {
   return (

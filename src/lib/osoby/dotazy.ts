@@ -88,11 +88,7 @@ function slozOsobu(radek: RadekOsoby): Osoba {
 export async function nactiOsoby(): Promise<Osoba[]> {
   const supabase = await vytvorServerovehoKlienta()
 
-  const { data } = await supabase
-    .from('profil')
-    .select(VYBER)
-    .order('prijmeni')
-    .order('jmeno')
+  const { data } = await supabase.from('profil').select(VYBER).order('prijmeni').order('jmeno')
 
   return (data ?? []).map(slozOsobu)
 }
@@ -100,17 +96,22 @@ export async function nactiOsoby(): Promise<Osoba[]> {
 export async function nactiOsobu(id: string): Promise<Osoba | null> {
   const supabase = await vytvorServerovehoKlienta()
 
-  const { data } = await supabase
-    .from('profil')
-    .select(VYBER)
-    .eq('id', id)
-    .maybeSingle()
+  const { data } = await supabase.from('profil').select(VYBER).eq('id', id).maybeSingle()
 
   return data ? slozOsobu(data) : null
 }
 
+/**
+ * Nabídky pro formuláře osoby. Tvar, na který se spoléhají komponenty - při
+ * výměně datové vrstvy se nemění.
+ */
+export type CiselnikyOsob = {
+  role: { id: string; kod: string; nazev: string; popis: string | null }[]
+  oblasti: { id: string; kod: string; nazev: string }[]
+}
+
 /** Nabídky do formulářů. Role je zároveň profese, podle které plánovač řadí úkony. */
-export async function nactiCiselnikyOsob() {
+export async function nactiCiselnikyOsob(): Promise<CiselnikyOsob> {
   const supabase = await vytvorServerovehoKlienta()
 
   const [role, oblasti] = await Promise.all([

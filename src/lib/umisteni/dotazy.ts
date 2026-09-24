@@ -23,7 +23,19 @@ export type UzelUmisteni = {
   deti: UzelUmisteni[]
 }
 
-export async function nactiStromUmisteni() {
+/**
+ * Složený strom. Tvar, na který se spoléhají komponenty - při výměně datové
+ * vrstvy se nemění.
+ */
+export type StromUmisteni = {
+  /** Areál. Null, když v číselníku chybí - haly pak stojí samostatně. */
+  koren: UzelUmisteni | null
+  /** Haly: potomci areálu. Bez kořene se za haly berou uzly bez nadřazeného. */
+  haly: UzelUmisteni[]
+  vsechny: UzelUmisteni[]
+}
+
+export async function nactiStromUmisteni(): Promise<StromUmisteni> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase

@@ -9,9 +9,10 @@
 
 import { NADOBA_ZAKAZEK, odkazyKeStazeni } from '@/lib/storage'
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
-import type { Database } from '@/types/database.types'
+import type { Database, Json } from '@/types/database.types'
 
 type StavZakazky = Database['public']['Enums']['stav_zakazky']
+type StavUkonu = Database['public']['Enums']['stav_ukonu']
 
 /** Stavy, ve kterých je zakázka rozdělaná. Zrcadlí podmínky v migraci 0013. */
 export const OTEVRENE_STAVY: readonly StavZakazky[] = ['naplanovano', 'probiha']
@@ -129,7 +130,41 @@ const SLOUPCE_ZAKAZKY = `
   zakazka_ukon (stav)
 ` as const
 
-export async function nactiZakazky(filtr: FiltrZakazek = {}, dnes: string) {
+/** Člověk u zakázky: kdo ji má přidělenou, kdo ji dokončil, kdo potvrdil krok. */
+type OsobaZakazky = { id: string; jmeno: string; prijmeni: string; email: string | null }
+
+type ZarizeniZakazky = {
+  id: string
+  nazev: string
+  inventarni_cislo: string | null
+  oblast_id: string
+  oblast: { id: string; kod: string; nazev: string }
+}
+
+/**
+ * Řádek plánu údržby. Tvar, na který se spoléhají komponenty - při výměně
+ * datové vrstvy se nemění, mění se jen dotaz, který ho plní.
+ *
+ * Zařízení a profese jsou povinné vazby, proto nikdy nejsou null. Přidělení
+ * je dobrovolné - zakázka na někoho čeká.
+ */
+export type ZakazkaVSeznamu = {
+  id: string
+  planovany_termin: string
+  stav: StavZakazky
+  zahajeno_at: string | null
+  dokonceno_at: string | null
+  zarizeni: ZarizeniZakazky
+  profese: { id: string; kod: string; nazev: string }
+  prirazeno: OsobaZakazky | null
+  /** Jen stavy kroků - stačí na postup, viz `postupZakazky`. */
+  zakazka_ukon: { stav: StavUkonu }[]
+}
+
+export async function nactiZakazky(
+  filtr: FiltrZakazek = {},
+  dnes: string,
+): Promise<ZakazkaVSeznamu[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   let dotaz = supabase.from('zakazka').select(SLOUPCE_ZAKAZKY)
@@ -160,8 +195,6 @@ export async function nactiZakazky(filtr: FiltrZakazek = {}, dnes: string) {
   return radky
 }
 
-export type ZakazkaVSeznamu = Awaited<ReturnType<typeof nactiZakazky>>[number]
-
 /** Kolik kroků je vyřízených a kolik jich celkem je. */
 export function postupZakazky(zakazka: { zakazka_ukon?: { stav: string }[] | null }): {
   hotovo: number
@@ -184,7 +217,23 @@ export function celeJmeno(
   return jmeno || (osoba.email ?? '')
 }
 
-export async function nactiZakazku(id: string) {
+/** Detail zakázky. Tvar, na který se spoléhají komponenty - při výměně datové vrstvy se nemění. */
+export type Zakazka = {
+  id: string
+  planovany_termin: string
+  stav: StavZakazky
+  zahajeno_at: string | null
+  dokonceno_at: string | null
+  poznamka: string | null
+  zarizeni: ZarizeniZakazky
+  /** Verze matice, podle které zakázka vznikla - i s názvem šablony. */
+  verze: { id: string; cislo_verze: number; sablona: { id: string; nazev: string } }
+  profese: { id: string; kod: string; nazev: string }
+  prirazeno: OsobaZakazky | null
+  dokoncil: OsobaZakazky | null
+}
+
+export async function nactiZakazku(id: string): Promise<Zakazka | null> {
   const supabase = await vytvorServerovehoKlienta()
 
   // maybeSingle, ne single: cizí zakázku RLS odfiltruje a dotaz vrátí prázdno.
@@ -209,10 +258,45 @@ export async function nactiZakazku(id: string) {
   return data
 }
 
-export type Zakazka = NonNullable<Awaited<ReturnType<typeof nactiZakazku>>>
-
 export function jeOtevrena(zakazka: { stav: StavZakazky }): boolean {
   return OTEVRENE_STAVY.includes(zakazka.stav)
+}
+
+/** Fotka ke kroku i s podepsaným odkazem. Null, když se odkaz nepodařilo vydat. */
+export type FotkaKroku = {
+  id: string
+  storage_path: string
+  popis: string | null
+  vytvoreno_at: string
+  odkaz: string | null
+}
+
+/**
+ * Krok checklistu. Tvar, na který se spoléhají komponenty - při výměně datové
+ * vrstvy se nemění.
+ *
+ * Fotky jsou dvakrát: `zakazka_foto` je surový výsledek dotazu, `fotky` totéž
+ * seřazené a s odkazy. Komponenty čtou `fotky`.
+ */
+export type KrokZakazky = {
+  id: string
+  poradi: number
+  nazev_snapshot: string
+  popis_snapshot: string | null
+  kontrolni_body: Json
+  vyzaduje_foto: boolean
+  vyzaduje_hodnotu: boolean
+  nabizi_poznamku: boolean
+  jednotka_snapshot: string | null
+  mez_min_snapshot: number | null
+  mez_max_snapshot: number | null
+  stav: StavUkonu
+  hodnota: number | null
+  poznamka: string | null
+  potvrzeno_at: string | null
+  potvrdil: OsobaZakazky | null
+  zakazka_foto: { id: string; storage_path: string; popis: string | null; vytvoreno_at: string }[]
+  fotky: FotkaKroku[]
 }
 
 /**
@@ -221,7 +305,7 @@ export function jeOtevrena(zakazka: { stav: StavZakazky }): boolean {
  * Odkazy na fotky se podepisují jedním voláním pro celou zakázku, ne po krocích -
  * checklist o šestnácti krocích by jinak čekal na šestnáct kol sítě.
  */
-export async function nactiKrokyZakazky(zakazkaId: string) {
+export async function nactiKrokyZakazky(zakazkaId: string): Promise<KrokZakazky[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
@@ -252,5 +336,3 @@ export async function nactiKrokyZakazky(zakazkaId: string) {
       .sort((a, b) => a.vytvoreno_at.localeCompare(b.vytvoreno_at)),
   }))
 }
-
-export type KrokZakazky = Awaited<ReturnType<typeof nactiKrokyZakazky>>[number]
