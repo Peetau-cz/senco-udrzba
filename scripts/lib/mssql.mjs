@@ -3,7 +3,8 @@
  *
  * Údaje se berou z `.env.local` (skripty se pouštějí s `--env-file`). Každý
  * skript se hlásí pod účtem, který má právě na svou práci: migrace, seed
- * a testy jako `udrzba_migrace` (vlastník databáze), založení databáze jako
+ * a testy jako vlastník databáze (MSSQL_MIGRACE_USER: na serveru IT `senco_udr`,
+ * lokálně `udrzba_migrace`), založení databáze jako
  * správce serveru, plánovač jako `udrzba_planovac`. Aplikační účet
  * `udrzba_app` skripty nepoužívají - ten patří aplikaci (src/lib/env.ts).
  */

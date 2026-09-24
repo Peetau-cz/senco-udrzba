@@ -10,6 +10,7 @@
 import { aplikujMigrace } from './lib/migrace.mjs'
 import { jeLokalniServer, nazevDatabaze, popisChyby, pripoj } from './lib/mssql.mjs'
 import { smazVsechnyObjekty } from './lib/obnova.mjs'
+import { nahrajOsoby } from './lib/osoby-seed.mjs'
 import { nahrajSeedSql } from './lib/seed.mjs'
 
 async function main() {
@@ -28,6 +29,7 @@ async function main() {
     console.log('- objekty smazány')
     await aplikujMigrace(pool)
     await nahrajSeedSql(pool)
+    await nahrajOsoby(pool, { heslo: process.env.SEED_HESLO ?? 'Senco.Test123' })
     console.log('\nHotovo.')
   } finally {
     await pool.close()

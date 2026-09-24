@@ -3,7 +3,8 @@
 --
 -- Konsolidovaný přepis stavu po 25 migracích PostgreSQL (větev `supabase`,
 -- commit c8a2500) do T-SQL. Tabulky, omezení a indexy; funkce, triggery,
--- procedury a pohledy jsou v dalších souborech, oprávnění a RLS v 0006.
+-- procedury a pohledy jsou v dalších souborech (kolo R2), oprávnění a RLS
+-- v kole R3.
 --
 -- Převod idiomů (podrobně v NASAZENI.md, kap. 3):
 --   uuid / gen_random_uuid()  -> uniqueidentifier default newid()
@@ -242,7 +243,7 @@ create table dbo.profil (
   constraint profil_pkey primary key (id)
 );
 -- Unikáty s více NULL: v SQL Serveru přes filtrovaný index. E-mail bez
--- ohledu na velikost písmen zajistí kolace databáze (Czech_100_CI_AS).
+-- ohledu na velikost písmen zajistí kolace databáze (SQL_Czech_CP1250_CI_AS).
 create unique index profil_osobni_cislo_key on dbo.profil (osobni_cislo) where osobni_cislo is not null;
 create unique index profil_email_idx        on dbo.profil (email)        where email is not null;
 GO

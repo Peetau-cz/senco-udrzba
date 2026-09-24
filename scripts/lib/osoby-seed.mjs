@@ -4,7 +4,7 @@
  * Nahrazuje `scripts/seed-users.mjs` ze Supabase. Hesla už nespravuje cizí
  * služba: hash počítá Node (src/lib/auth/heslo.ts) a ukládá se do tabulky
  * `prihlaseni`, do které smí zapisovat jen vlastník databáze - proto seed běží
- * jako `udrzba_migrace`, ne jako aplikace.
+ * jako vlastník (MSSQL_MIGRACE_USER), ne jako aplikace.
  *
  * Idempotentní: osobu pozná podle osobního čísla, doplní jen chybějící vazby
  * a heslo nastaví jen tomu, kdo ho ještě nemá (změněné heslo z aplikace se
