@@ -3,16 +3,17 @@
 Sem patří všechno, co se pouští proti SQL Serveru. Rozhodnutí a postup přesunu ze
 Supabase popisuje `docs/NASAZENI.md`; tenhle soubor jen říká, co kde leží.
 
-| Adresář    | Obsah                                                                         | Kdo pouští                                     |
-| ---------- | ----------------------------------------------------------------------------- | ---------------------------------------------- |
-| `migrace/` | schéma po vrstvách, číslované `0001_…`; soubory s `_` na začátku jsou šablony | `npm run mssql:migrace` jako vlastník databáze |
-| `seed/`    | testovací data, idempotentní SQL v pořadí názvu                               | `npm run mssql:seed`                           |
-| `testy/`   | T-SQL testy; neúspěch = `THROW 60000`, průběh `PRINT`                         | `npm run mssql:testy`                          |
-| `agent/`   | (vznikne v R7) úloha SQL Server Agenta pro noční plánovač; aplikuje IT        | ručně                                          |
+| Adresář    | Obsah                                                                         | Kdo pouští                                   |
+| ---------- | ----------------------------------------------------------------------------- | -------------------------------------------- |
+| `migrace/` | schéma po vrstvách, číslované `0001_…`; soubory s `_` na začátku jsou šablony | `npm run mssql:migrace` jako člen `db_owner` |
+| `seed/`    | testovací data, idempotentní SQL v pořadí názvu                               | `npm run mssql:seed`                         |
+| `testy/`   | T-SQL testy; neúspěch = `THROW 60000`, průběh `PRINT`                         | `npm run mssql:testy`                        |
+| `agent/`   | (vznikne v R7) úloha SQL Server Agenta pro noční plánovač; aplikuje IT        | ručně                                        |
 
-Vlastník databáze je účet z `MSSQL_MIGRACE_USER`: ve vývoji na `SENS-SQL\TEST`
-(databázi `Udrzba_dev` zakládá IT skriptem z `docs/NASAZENI.md` kap. 4), na lokálním serveru
-`udrzba_migrace` z `npm run mssql:init`. Běžící web ho nikdy nepoužívá.
+Migrace běží pod účtem z `MSSQL_MIGRACE_USER`, který je v databázi členem `db_owner`:
+ve vývoji `senco_udr_test` na `SENS-SQL\TEST` (databázi `Udrzba_dev` založilo IT, viz
+`docs/NASAZENI.md` kap. 4), na lokálním serveru `udrzba_migrace` z `npm run mssql:init`.
+Běžící web ho nikdy nepoužívá.
 
 Aplikované migrace si databáze pamatuje v `dbo._migrace` i s otiskem obsahu — už
 aplikovaný soubor se nemění, změna patří do nové migrace.

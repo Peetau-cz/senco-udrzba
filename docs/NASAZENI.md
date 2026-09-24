@@ -62,17 +62,18 @@ bez Supabase, `supabase` zůstane stát.
 ### Databáze `Udrzba`
 
 - **Dvě instance na `SENS-SQL`:** `TEST` = vývoj (`Udrzba_dev` vedle kopie ZAKMATu),
-  `ZAKMAT` = ostrý provoz (`Udrzba` vedle ostrého ZAKMATu, až po R8). `Udrzba` je vždy
-  na téže instanci jako ZAKMAT — dotaz přes instance nejde.
+  `ZAKMAT` = ostrý provoz (`Udrzba` vedle ostrého ZAKMATu). `Udrzba` je vždy na téže
+  instanci jako ZAKMAT — dotaz přes instance nejde.
 - **Tři účty** (na každé instanci zvlášť, loginy se mezi instancemi nesdílejí):
-  - **vlastník databáze** — na TEST `senco_udr_test`, na ostré instanci se rozhodne před
-    nasazením, lokálně `udrzba_migrace`; jen migrace, seed a testy (`MSSQL_MIGRACE_*`);
+  - **účet pro migrace** — člen `db_owner`; na TEST `senco_udr_test`, lokálně
+    `udrzba_migrace`; jen migrace, seed a testy (`MSSQL_MIGRACE_*`). Vlastníkem databáze
+    je ten, kdo ji založil (IT);
   - `udrzba_app` — běh aplikace, jen práva z migrace, RLS ho omezuje; v ZAKMATu smí jen
     `SELECT` na `dbo.UZIVATEL` a `dbo.UZIVATEL_KARTA` (přihlášení, karty);
   - `udrzba_planovac` — jen `EXECUTE dbo.spust_planovac`.
 
-  Aplikace se **nikdy nepřipojuje jako vlastník**: vlastník je člen `db_owner` a řádková
-  práva ho neomezují.
+  Aplikace se **nikdy nepřipojuje jako účet pro migrace**: člena `db_owner` řádková
+  práva neomezují.
 
 - **Kolace `SQL_Czech_CP1250_CI_AS`** (stejná jako ZAKMAT, aby dotazy přes obě databáze
   nepadaly na konfliktu kolací), compatibility level **130** — server je SQL Server 2016
@@ -105,48 +106,47 @@ bez Supabase, `supabase` zůstane stát.
 
 ## 4. Co potřebujeme od IT
 
-### Požadavky na vývojovou databázi (SENS-SQL\TEST)
+### Založení databází (požadavek podán 24. 9. 2026, IT slíbilo do týdne)
 
-> **Web Údržba — vývojová databáze na SENS-SQL\TEST**
+IT zakládá jen databáze; vlastníkem je ten, kdo je založí. Loginy a jejich práva si
+zařídí autor projektu sám, tabulky vytvoří `npm run mssql:migrace`.
+
+> **Prosím o založení dvou databází na SENS-SQL:**
 >
-> 1. Databáze `Udrzba_dev`: kolace `SQL_Czech_CP1250_CI_AS`, compatibility level 130,
->    `READ_COMMITTED_SNAPSHOT ON`, `RECURSIVE_TRIGGERS OFF`.
-> 2. Login `senco_udr_test` — vlastník `Udrzba_dev`.
-> 3. Loginy `udrzba_app` a `udrzba_planovac` — uživatel v `Udrzba_dev`, žádná další práva.
-> 4. V kopii ZAKMATu na TEST: `udrzba_app` a `senco_udr_test` jen `SELECT` na
->    `dbo.UZIVATEL` a `dbo.UZIVATEL_KARTA`.
+> 1. `Udrzba_dev` na instanci **TEST** (vývoj)
+> 2. `Udrzba` na instanci **ZAKMAT** (ostrý provoz)
 >
-> Prosím o odpověď:
->
-> 5. Verze instance TEST (stejná jako ZAKMAT, tj. 2016?) a přesný název kopie ZAKMATu.
-> 6. Běží na TEST SQL Server Agent? Smí v něm běžet úloha pod `udrzba_planovac`?
->
-> Hesla předat osobně. Ostrou databázi na instanci ZAKMAT si řekneme později.
+> Obě: kolace `SQL_Czech_CP1250_CI_AS`, compatibility level `130`,
+> `READ_COMMITTED_SNAPSHOT ON`, `RECURSIVE_TRIGGERS OFF`. `Udrzba` prosím zařadit do
+> pravidelných záloh.
 
 ```sql
--- SENS-SQL\TEST; hesla a název kopie ZAKMATu doplní IT
-CREATE LOGIN senco_udr_test  WITH PASSWORD = N'<heslo>', CHECK_POLICY = ON;
-CREATE LOGIN udrzba_app      WITH PASSWORD = N'<heslo>', CHECK_POLICY = ON;
-CREATE LOGIN udrzba_planovac WITH PASSWORD = N'<heslo>', CHECK_POLICY = ON;
-GO
+-- SENS-SQL\TEST
 CREATE DATABASE Udrzba_dev COLLATE SQL_Czech_CP1250_CI_AS;
 GO
 ALTER DATABASE Udrzba_dev SET COMPATIBILITY_LEVEL = 130;
-ALTER DATABASE Udrzba_dev SET RECURSIVE_TRIGGERS OFF;
 ALTER DATABASE Udrzba_dev SET READ_COMMITTED_SNAPSHOT ON;
-ALTER AUTHORIZATION ON DATABASE::Udrzba_dev TO senco_udr_test;
+ALTER DATABASE Udrzba_dev SET RECURSIVE_TRIGGERS OFF;
 GO
-USE Udrzba_dev;
-CREATE USER udrzba_app      FOR LOGIN udrzba_app;
-CREATE USER udrzba_planovac FOR LOGIN udrzba_planovac;
+
+-- SENS-SQL\ZAKMAT
+CREATE DATABASE Udrzba COLLATE SQL_Czech_CP1250_CI_AS;
 GO
-USE ZAKMAT;  -- kopie ZAKMATu na TEST
-CREATE USER udrzba_app     FOR LOGIN udrzba_app;
-CREATE USER senco_udr_test FOR LOGIN senco_udr_test;
-GRANT SELECT ON dbo.UZIVATEL       TO udrzba_app, senco_udr_test;
-GRANT SELECT ON dbo.UZIVATEL_KARTA TO udrzba_app, senco_udr_test;
+ALTER DATABASE Udrzba SET COMPATIBILITY_LEVEL = 130;
+ALTER DATABASE Udrzba SET READ_COMMITTED_SNAPSHOT ON;
+ALTER DATABASE Udrzba SET RECURSIVE_TRIGGERS OFF;
 GO
 ```
+
+### Loginy (zařídí autor projektu, na každé instanci zvlášť)
+
+| Login                                       | V databázi Údržby              | V ZAKMATu (na TEST jeho kopie)                   |
+| ------------------------------------------- | ------------------------------ | ------------------------------------------------ |
+| účet pro migrace (`senco_udr_test` na TEST) | člen `db_owner`                | — (pro průzkum stačí `SELECT` níž)               |
+| `udrzba_app`                                | uživatel bez práv (dá migrace) | `SELECT` na `dbo.UZIVATEL`, `dbo.UZIVATEL_KARTA` |
+| `udrzba_planovac`                           | uživatel bez práv (dá migrace) | —                                                |
+
+Tabulky se ručně nezakládají — jinak nesedí evidence `_migrace`.
 
 Záložní cesta, kdyby databáze na serveru nešla: **SQL Server Developer Edition** na vývojovém
 počítači (bezplatná plná edice; Basic install, Mixed Mode, TCP zapnuté), databázi a loginy
@@ -157,10 +157,10 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 1. **Jak ZAKMAT ověřuje heslo** (tabulka, sloupec, algoritmus, sůl, kódování; Delphi kód
    ověření) — rozhodne, zda se web přihlašuje proti ZAKMATu, nebo vede vlastní hesla.
 2. ~~Verze a edice~~ — **zjištěno 8. 9.:** `SENS-SQL\ZAKMAT` je SQL Server 2016 SP3
-   Standard (dynamický port). Zbývá: verze instance `TEST` (požadavek 5) a certifikát TLS
-   (jde nastavit `MSSQL_TRUST_CERT=ne`?).
-3. Ostrá databáze `Udrzba` na instanci ZAKMAT **po R8**: vlastník, loginy znovu (z TEST se
-   nepřenášejí), jiná hesla. Kolace ZAKMATu je `SQL_Czech_CP1250_CI_AS`.
+   Standard (dynamický port). Zbývá: verze instance `TEST`, přesný název kopie ZAKMATu na
+   TEST (zjistí `npm run mssql:prozkoumej`) a certifikát TLS (`MSSQL_TRUST_CERT=ne`?).
+3. ~~Ostrá databáze~~ — **požádáno 24. 9.** spolu s vývojovou. Loginy na instanci ZAKMAT
+   se zakládají znovu (z TEST se nepřenášejí), s jinými hesly.
 4. SQL Server Agent: k dispozici? Smí úloha běžet jako `udrzba_planovac`? Jinak
    Plánovač úloh Windows na aplikačním serveru.
 5. ~~Přístup k uživatelům a kartám ZAKMATu~~ — **rozhodnuto 24. 9.:** `udrzba_app` dostane
@@ -197,19 +197,19 @@ Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run
 Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–25 pracovních dní,
 3–5 týdnů kalendářně. R0 a psaní T-SQL jdou dělat i bez databáze, otestovat se bez ní nedají.
 
-**Až IT připraví `Udrzba_dev`:** `.env.local` na `SENS-SQL` / instance `TEST` /
+**Až IT připraví `Udrzba_dev` a budou loginy:** `.env.local` na `SENS-SQL` / instance `TEST` /
 `Udrzba_dev`, `MSSQL_MIGRACE_USER=senco_udr_test`; ověřit čtením
 (`npm run mssql:prozkoumej -- --databaze=Udrzba_dev,<kopie ZAKMATu>`), pak
 `npm run mssql:migrace && npm run mssql:seed && npm run mssql:testy`.
 
 ### Nasazení na ostrý server (až po R8)
 
-1. IT založí `Udrzba` na instanci **ZAKMAT** stejným skriptem jako na TEST — loginy znovu
-   a s jinými hesly, `SELECT` pro `udrzba_app` v ostrém ZAKMATu; Node LTS na aplikačním
-   serveru, adresář pro soubory v zálohách.
+1. Databáze `Udrzba` na instanci **ZAKMAT** už existuje (požádáno 24. 9.). Loginy znovu
+   a s jinými hesly podle tabulky v kap. 4, `SELECT` pro `udrzba_app` v ostrém ZAKMATu;
+   Node LTS na aplikačním serveru, adresář pro soubory v zálohách.
 2. `npm ci && npm run build`; `.env` s `MSSQL_*` (jen `udrzba_app`), `RELACE_TAJEMSTVI`,
    `SOUBORY_ADRESAR`.
-3. `npm run mssql:migrace` pod vlastníkem databáze; první správce dostane heslo skriptem
+3. `npm run mssql:migrace` pod účtem pro migrace; první správce dostane heslo skriptem
    `npm run mssql:heslo`.
 4. Úloha Agenta z `mssql/agent/planovac_job.sql` (nebo Plánovač úloh).
 5. `next start` jako služba Windows za reverzní proxy s TLS.
