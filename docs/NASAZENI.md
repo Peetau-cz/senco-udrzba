@@ -64,7 +64,8 @@ bez Supabase, `supabase` zůstane stát.
 - **Tři účty:** `udrzba_migrace` — vlastník databáze, jen migrace, seed a testy;
   `udrzba_app` — běh aplikace, jen práva z migrace, RLS ho omezuje; `udrzba_planovac` —
   jen `EXECUTE dbo.spust_planovac`. Aplikace se **nikdy nepřipojuje jako vlastník**.
-- **Kolace `Czech_100_CI_AS`** (nebo stejná jako ZAKMAT), compatibility level 150,
+- **Kolace `Czech_100_CI_AS`** (nebo stejná jako ZAKMAT), compatibility level **130** -
+  server je SQL Server 2016 a výš neumí,
   `RECURSIVE_TRIGGERS OFF`, `READ_COMMITTED_SNAPSHOT ON`. Co přesně založit, vypíše
   `npm run mssql:init -- --jen-vypis`.
 - **RLS:** schéma `bezpecnost`, predikáty jako inline funkce se `SCHEMABINDING`, na každou
@@ -98,7 +99,7 @@ bez Supabase, `supabase` zůstane stát.
 ### Žádost o vývojovou databázi
 
 > Prosím o založení databáze `Udrzba_dev` na SQL Serveru (kolace `Czech_100_CI_AS`, pokud
-> ZAKMAT nemá jinou, pak stejnou jako ZAKMAT; compatibility level 150,
+> ZAKMAT nemá jinou, pak stejnou jako ZAKMAT; compatibility level 130,
 > `READ_COMMITTED_SNAPSHOT ON`) a tří SQL loginů: `udrzba_migrace` jako vlastník této
 > databáze, `udrzba_app` a `udrzba_planovac` jen s `CONNECT` (práva jim nastaví migrační
 > skripty). Databáze slouží k vývoji náhrady za Supabase: data mají zůstat ve firmě, dílna

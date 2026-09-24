@@ -7,7 +7,8 @@
  *
  * Co vznikne:
  *   - databáze (MSSQL_DATABASE, výchozí Udrzba) s českou kolací a nastavením,
- *     na kterém stojí schéma (compatibility 150, RECURSIVE_TRIGGERS OFF,
+ *     na kterém stojí schéma (compatibility 130 - server je SQL Server 2016,
+ *     RECURSIVE_TRIGGERS OFF,
  *     READ_COMMITTED_SNAPSHOT ON);
  *   - login `udrzba_migrace` jako VLASTNÍK databáze (migrace, seed, testy);
  *   - loginy `udrzba_app` a `udrzba_planovac` jen s právem připojit se -
@@ -50,7 +51,7 @@ export function sestavPrikazy() {
     },
     {
       popis: 'nastavení databáze',
-      text: `alter database [${db}] set compatibility_level = 150;
+      text: `alter database [${db}] set compatibility_level = 130;
 alter database [${db}] set recursive_triggers off;
 alter database [${db}] set read_committed_snapshot on with rollback immediate;`,
     },

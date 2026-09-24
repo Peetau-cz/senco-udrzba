@@ -22,8 +22,10 @@ if (-not $dll) {
 }
 
 Add-Type -Path $dll.FullName
-# 160 = gramatika SQL Serveru 2022; $true = QUOTED_IDENTIFIER ON jako v aplikaci.
-$parser = New-Object Microsoft.SqlServer.TransactSql.ScriptDom.TSql160Parser($true)
+# 130 = gramatika SQL Serveru 2016, na kterém SENS-SQL\ZAKMAT běží. Vyšší
+# gramatika by propustila STRING_AGG, TRIM a další, co tam nejsou.
+# $true = QUOTED_IDENTIFIER ON jako v aplikaci.
+$parser = New-Object Microsoft.SqlServer.TransactSql.ScriptDom.TSql130Parser($true)
 
 if (-not $Soubory) {
   $Soubory = Get-ChildItem (Join-Path $PSScriptRoot '..\mssql') -Recurse -Filter '*.sql' |

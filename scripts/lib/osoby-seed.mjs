@@ -20,7 +20,7 @@ export const UZIVATELE = [
     email: 'admin@senco.test',
     jmeno: 'Adam',
     prijmeni: 'Správce',
-    osobniCislo: '1001',
+    osobniCislo: 1001,
     role: ['administrator'],
     oblasti: [],
   },
@@ -28,7 +28,7 @@ export const UZIVATELE = [
     email: 'vedouci@senco.test',
     jmeno: 'Petr',
     prijmeni: 'Vedoucí',
-    osobniCislo: '1002',
+    osobniCislo: 1002,
     role: ['vedouci_udrzby'],
     oblasti: [],
   },
@@ -36,7 +36,7 @@ export const UZIVATELE = [
     email: 'cnc@senco.test',
     jmeno: 'Jan',
     prijmeni: 'Novák',
-    osobniCislo: '1003',
+    osobniCislo: 1003,
     role: ['specialista_cnc'],
     oblasti: [{ kod: 'cnc', vztah: 'garant' }],
   },
@@ -44,7 +44,7 @@ export const UZIVATELE = [
     email: 'elektro@senco.test',
     jmeno: 'Martin',
     prijmeni: 'Dvořák',
-    osobniCislo: '1004',
+    osobniCislo: 1004,
     role: ['specialista_elektro'],
     oblasti: [{ kod: 'elektro', vztah: 'garant' }],
   },
@@ -52,7 +52,7 @@ export const UZIVATELE = [
     email: 'udrzbar@senco.test',
     jmeno: 'Josef',
     prijmeni: 'Svoboda',
-    osobniCislo: '1005',
+    osobniCislo: 1005,
     role: ['udrzbar'],
     // Lakovna má podle zadání ř. 32-36 spolupracujícího pracovníka údržby.
     oblasti: [
@@ -64,7 +64,7 @@ export const UZIVATELE = [
     email: 'lakovna@senco.test',
     jmeno: 'Eva',
     prijmeni: 'Králová',
-    osobniCislo: '1006',
+    osobniCislo: 1006,
     role: ['vedouci_lakovny'],
     oblasti: [{ kod: 'lakovna', vztah: 'garant' }],
   },
@@ -72,7 +72,7 @@ export const UZIVATELE = [
     email: 'sklad@senco.test',
     jmeno: 'Tomáš',
     prijmeni: 'Horák',
-    osobniCislo: '1007',
+    osobniCislo: 1007,
     role: ['pracovnik_skladu'],
     oblasti: [{ kod: 'vzv', vztah: 'garant' }],
   },
@@ -80,7 +80,7 @@ export const UZIVATELE = [
     email: 'management@senco.test',
     jmeno: 'Irena',
     prijmeni: 'Ředitelová',
-    osobniCislo: '1008',
+    osobniCislo: 1008,
     role: ['management'],
     oblasti: [],
   },
@@ -95,7 +95,7 @@ export const OSOBY_BEZ_UCTU = [
   {
     jmeno: 'Karel',
     prijmeni: 'Zámečník',
-    osobniCislo: '2001',
+    osobniCislo: 2001,
     role: ['udrzbar'],
     oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
     karta: 'KARTA-2001',
@@ -103,7 +103,7 @@ export const OSOBY_BEZ_UCTU = [
   {
     jmeno: 'Alena',
     prijmeni: 'Nováková',
-    osobniCislo: '2002',
+    osobniCislo: 2002,
     role: ['udrzbar'],
     oblasti: [{ kod: 'lakovna', vztah: 'spolupracujici' }],
     karta: 'KARTA-2002',
@@ -111,7 +111,7 @@ export const OSOBY_BEZ_UCTU = [
   {
     jmeno: 'Kiosek',
     prijmeni: 'Strojní údržba',
-    osobniCislo: '9001',
+    osobniCislo: 9001,
     role: ['kiosek'],
     oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
     karta: null,
@@ -124,7 +124,7 @@ async function mapaKodu(pool, tabulka) {
 }
 
 async function najdiNeboZalozOsobu(pool, o) {
-  const hledani = pool.request().input('osobni_cislo', sql.NVarChar(30), o.osobniCislo)
+  const hledani = pool.request().input('osobni_cislo', sql.Int, o.osobniCislo)
   const { recordset } = await hledani.query(
     'select id from dbo.profil where osobni_cislo = @osobni_cislo',
   )
@@ -133,7 +133,7 @@ async function najdiNeboZalozOsobu(pool, o) {
     .request()
     .input('jmeno', sql.NVarChar(100), o.jmeno)
     .input('prijmeni', sql.NVarChar(100), o.prijmeni)
-    .input('osobni_cislo', sql.NVarChar(30), o.osobniCislo)
+    .input('osobni_cislo', sql.Int, o.osobniCislo)
     .input('email', sql.NVarChar(254), o.email ?? null)
 
   if (recordset[0]) {
