@@ -186,7 +186,7 @@ Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run
 | ---- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026**                         |
 | R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | napsáno naslepo, čeká na `Udrzba_dev` na TEST |
-| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                |                                               |
+| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                | naslepo: `0002_funkce` + test `funkce`        |
 | R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                                               |
 | R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                                               |
 | R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                                               |
