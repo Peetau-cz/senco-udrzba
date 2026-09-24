@@ -163,20 +163,20 @@ GO
 
 -- Jen zadání bodů (nazev, typ) v původním pořadí, bez odpovědí - trigger tím
 -- porovnává, jestli technik nezměnil otázku místo odpovědi. Prázdné -> [].
+-- FOR JSON místo string_agg: ten má až SQL Server 2017.
 create function dbo.zadani_kontrolnich_bodu(@body nvarchar(max))
 returns nvarchar(max)
 with schemabinding
 as
 begin
   if @body is null or isjson(@body) <> 1 return N'[]';
-  declare @vysledek nvarchar(max);
-  select @vysledek = string_agg(
-      N'{"nazev":' + isnull(N'"' + string_escape(json_value(prvek.[value], N'$.nazev'), 'json') + N'"', N'null')
-      + N',"typ":' + isnull(N'"' + string_escape(json_value(prvek.[value], N'$.typ'), 'json') + N'"', N'null')
-      + N'}',
-      N',') within group (order by cast(prvek.[key] as int))
-  from openjson(@body) as prvek;
-  return N'[' + isnull(@vysledek, N'') + N']';
+  return isnull((
+    select json_value(prvek.[value], N'$.nazev') as nazev,
+           json_value(prvek.[value], N'$.typ')   as typ
+    from openjson(@body) as prvek
+    order by cast(prvek.[key] as int)
+    for json path, include_null_values
+  ), N'[]');
 end;
 GO
 
