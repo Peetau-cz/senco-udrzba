@@ -3,7 +3,7 @@
  *
  * Běží pod správcem serveru (MSSQL_ADMIN_USER, typicky `sa`) nad `master`.
  * Na serveru od IT se nepouští - tam databázi zakládá IT skriptem z NASAZENI
- * kap. 4 a vlastníkem je `senco_udr`. `npm run mssql:init -- --jen-vypis`
+ * kap. 4 a vlastníka určí MSSQL_MIGRACE_USER. `npm run mssql:init -- --jen-vypis`
  * vypíše lokální variantu, aniž by se k čemukoli připojil.
  *
  * Co vznikne:

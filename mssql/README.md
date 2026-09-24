@@ -10,8 +10,8 @@ Supabase popisuje `docs/NASAZENI.md`; tenhle soubor jen říká, co kde leží.
 | `testy/`   | T-SQL testy; neúspěch = `THROW 60000`, průběh `PRINT`                         | `npm run mssql:testy`                          |
 | `agent/`   | (vznikne v R7) úloha SQL Server Agenta pro noční plánovač; aplikuje IT        | ručně                                          |
 
-Vlastník databáze je účet z `MSSQL_MIGRACE_USER`: na serveru IT `senco_udr` (databázi
-`Udrzba_dev` zakládá IT skriptem z `docs/NASAZENI.md` kap. 4), na lokálním serveru
+Vlastník databáze je účet z `MSSQL_MIGRACE_USER`: ve vývoji na `SENS-SQL\TEST`
+(databázi `Udrzba_dev` zakládá IT skriptem z `docs/NASAZENI.md` kap. 4), na lokálním serveru
 `udrzba_migrace` z `npm run mssql:init`. Běžící web ho nikdy nepoužívá.
 
 Aplikované migrace si databáze pamatuje v `dbo._migrace` i s otiskem obsahu — už

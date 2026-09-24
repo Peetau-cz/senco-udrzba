@@ -11,7 +11,7 @@
  * TRY/CATCH a fixtury se opravdu zapíšou. Po každém souboru se proto databáze
  * vrací do výchozího stavu - snímkem, nebo smazáním objektů, novou migrací
  * a celým seedem včetně osob. Snímek potřebuje serverové právo CREATE DATABASE;
- * na serveru IT ho vlastník `senco_udr` nemá, takže tam běží ta pomalejší cesta.
+ * na serveru IT ho vlastník databáze nemá, takže tam běží ta pomalejší cesta.
  *
  * Úmluva pro testy: neúspěch = `THROW 60000, N'…', 1`; průběh se hlásí
  * `PRINT`. Práva se ověřují pod `EXECUTE AS USER = 'udrzba_app'` … `REVERT`.
