@@ -182,17 +182,17 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run typecheck`,
 `npm run lint`; po každém kole s databází `npm run mssql:migrace && npm run mssql:testy`.
 
-| Kolo | Obsah                                                                                                                 | Stav                                          |
-| ---- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026**                         |
-| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | napsáno naslepo, čeká na `Udrzba_dev` na TEST |
-| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                | naslepo: `0002_funkce` + test `funkce`        |
-| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                                               |
-| R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                                               |
-| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                                               |
-| R6   | soubory na disku a route handler `/soubory/…`                                                                         |                                               |
-| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                             |                                               |
-| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`     |                                               |
+| Kolo | Obsah                                                                                                                 | Stav                                            |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026**                           |
+| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | napsáno naslepo, čeká na `Udrzba_dev` na TEST   |
+| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                | naslepo: `0002_funkce`, `0003_triggery` + testy |
+| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                                                 |
+| R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                                                 |
+| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                                                 |
+| R6   | soubory na disku a route handler `/soubory/…`                                                                         |                                                 |
+| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                             |                                                 |
+| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`     |                                                 |
 
 Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–25 pracovních dní,
 3–5 týdnů kalendářně. R0 a psaní T-SQL jdou dělat i bez databáze, otestovat se bez ní nedají.
@@ -224,6 +224,13 @@ Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–2
 - **Chybějící BLOCK predikát znamená „povoleno".** Kde Postgres neměl politiku (INSERT a
   DELETE na `zakazka`, DELETE na `provozni_denik`, vše na `audit_log`…), nesmí mít
   `udrzba_app` GRANT. Blokovaný UPDATE hlásí chybu 33504, ne nula řádků.
+- **Trigger v SQL Serveru běží až po zápisu.** Zámek, který v PostgreSQL běžel BEFORE,
+  musí rozhodovat podle `deleted`, ne podle tabulky — jinak by si uživatel přepsal
+  `vytvoreno_at` a obešel okno na opravu deníku (`smi_menit_zapis_deniku` bere hodnoty).
+  Razítko je vnořený UPDATE; ostatní triggery tabulky ho poznají přes
+  `trigger_nestlevel(object_id(N'dbo.<tabulka>_zmena')) > 0`.
+- **SQL Server 2016 nebere proměnnou jako cestu JSON** (`JSON_VALUE`, `JSON_MODIFY`) a nemá
+  `STRING_AGG` — klíče se párují přes `OPENJSON`, skládá se přes `FOR JSON` / `FOR XML`.
 - **`OUTPUT` nejde nad tabulkou s triggerem** (chyba 334) → id generuje aplikace, procedury
   `SET @id = NEWID()` před INSERT. Žádné `.returning()`.
 - **Sloupcový GRANT na INSERT neexistuje.** `vytvoreno_at` a `zmeneno_at` přepíše trigger.

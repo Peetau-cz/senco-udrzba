@@ -160,10 +160,32 @@ GO
 -- Okno na opravu zápisu v deníku (dřív 0022)
 --
 -- Jediné místo, kde je pravidlo „autor do 24 hodin, vedoucí údržby
--- a administrátor kdykoli" napsané; triggery (0003) i route handler souborů
--- (R6) se ptají tady. Řádková omezení nad provozni_denik se uplatní - na zápis,
--- který uživatel nevidí, nemá co sahat.
+-- a administrátor kdykoli" napsané. Dvě podoby téhož:
+--
+--   smi_menit_zapis_deniku(oblast, zapsal, vytvoreno) - nad hodnotami. Volá ji
+--     zámek deníku (0003) se STARÝMI hodnotami z `deleted`: trigger v SQL
+--     Serveru běží až po zápisu a v tabulce by už byla nová hodnota - kdo by
+--     si přepsal vytvoreno_at, obešel by okno.
+--   muze_menit_zapis_deniku(id) - nad uloženým zápisem, pro fotky k zápisu
+--     (0003), aplikaci a route handler souborů (R6). Řádková omezení nad
+--     provozni_denik se uplatní - na zápis, který uživatel nevidí, nemá co sahat.
 -- -----------------------------------------------------------------------------
+
+create function dbo.smi_menit_zapis_deniku(
+  @oblast    uniqueidentifier,
+  @zapsal    uniqueidentifier,
+  @vytvoreno datetime2(3)
+)
+returns bit
+with schemabinding
+as
+begin
+  if dbo.provadi_udrzbu_v_oblasti(@oblast) = 0 return 0;
+  if dbo.ma_roli(N'administrator') = 1 or dbo.ma_roli(N'vedouci_udrzby') = 1 return 1;
+  if @zapsal = dbo.aktualni_uzivatel() and @vytvoreno >= dateadd(hour, -24, sysutcdatetime()) return 1;
+  return 0;
+end;
+GO
 
 create function dbo.muze_menit_zapis_deniku(@zaznam uniqueidentifier)
 returns bit
@@ -174,11 +196,7 @@ begin
     select 1
     from dbo.provozni_denik d
     where d.id = @zaznam
-      and dbo.provadi_udrzbu_v_oblasti(d.oblast_id) = 1
-      and (   dbo.ma_roli(N'administrator') = 1
-           or dbo.ma_roli(N'vedouci_udrzby') = 1
-           or (    d.zapsal_id = dbo.aktualni_uzivatel()
-               and d.vytvoreno_at >= dateadd(hour, -24, sysutcdatetime())))
+      and dbo.smi_menit_zapis_deniku(d.oblast_id, d.zapsal_id, d.vytvoreno_at) = 1
   ) return 1;
   return 0;
 end;
