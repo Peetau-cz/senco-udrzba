@@ -12,6 +12,11 @@ const nextConfig: NextConfig = {
     // úložiště (10 MB v migraci 0004), aby se soubor odmítl s vysvětlením, ne
     // obecnou chybou o velikosti požadavku.
     serverActions: { bodySizeLimit: '12mb' },
+    // Jen pro `next dev`: ladicí údaje k serverovým komponentám jinak chodí
+    // přes HMR websocket a přechod na stránku na ně čeká. Když karta dlouho
+    // leží, Edge ji uspí a spojení spadne - přechod pak visí na „Rendering…"
+    // až do obnovení stránky. Provozu (`next start`) se to netýká.
+    reactDebugChannel: false,
   },
 }
 
