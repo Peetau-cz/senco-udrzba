@@ -267,3 +267,45 @@ begin
   return @datum;
 end;
 GO
+
+-- -----------------------------------------------------------------------------
+-- PIN pro tablet v dílně (rozhodnuto 25. 9. 2026, tabulka dbo.pin v 0001)
+--
+-- PIN je 4-6 číslic. Slabý = všechny číslice stejné (0000, 777777) nebo řada
+-- vzestupně či sestupně (1234, 98765). Hash se počítá jen tady, aby procedury
+-- nastavení, změny a ověření nemohly počítat každá jinak.
+-- -----------------------------------------------------------------------------
+
+create function dbo.je_platny_pin(@pin nvarchar(20))
+returns bit
+with schemabinding
+as
+begin
+  if @pin is null return 0;
+  -- datalength kvůli mezerám na konci, které len() nepočítá.
+  if datalength(@pin) / 2 not between 4 and 6 return 0;
+  if @pin like N'%[^0-9]%' return 0;
+  return 1;
+end;
+GO
+
+create function dbo.je_slaby_pin(@pin nvarchar(20))
+returns bit
+with schemabinding
+as
+begin
+  if dbo.je_platny_pin(@pin) = 0 return 1;
+  if replace(@pin, left(@pin, 1), N'') = N'' return 1;
+  if charindex(@pin, N'0123456789') > 0 or charindex(@pin, N'9876543210') > 0 return 1;
+  return 0;
+end;
+GO
+
+create function dbo.hash_pinu(@sul binary(16), @pin nvarchar(6))
+returns binary(64)
+with schemabinding
+as
+begin
+  return hashbytes('SHA2_512', @sul + cast(@pin as varbinary(12)));
+end;
+GO

@@ -599,7 +599,10 @@ exec sys.sp_settriggerorder @triggername = N'dbo.zarizeni_kontrola_parametru', @
 GO
 
 -- -----------------------------------------------------------------------------
--- Razítka a audit nad 21 tabulkami (dřív audit_zmeny + nastav_zmeneno_at)
+-- Razítka a audit nad 20 tabulkami (dřív audit_zmeny + nastav_zmeneno_at).
+-- Bez triggeru jsou tablet (zápis „naposledy viděn" by zahltil audit), pin
+-- a pokus_hesla (hash a počítadla do auditu nepatří) - jejich události
+-- zapisují do audit_log procedury z 0004 samy.
 -- -----------------------------------------------------------------------------
 
 exec dbo.vytvor_auditni_trigger N'oblast';
@@ -608,7 +611,6 @@ exec dbo.vytvor_auditni_trigger N'umisteni';
 exec dbo.vytvor_auditni_trigger N'profil';
 exec dbo.vytvor_auditni_trigger N'uzivatel_role';
 exec dbo.vytvor_auditni_trigger N'uzivatel_oblast';
-exec dbo.vytvor_auditni_trigger N'karta';
 exec dbo.vytvor_auditni_trigger N'typ_zarizeni';
 exec dbo.vytvor_auditni_trigger N'zarizeni';
 exec dbo.vytvor_auditni_trigger N'zarizeni_soubor';

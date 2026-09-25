@@ -32,8 +32,7 @@ using (values
   (N'udrzbar',             N'Údržbář',             N'Provádí údržbu, zapisuje do provozního deníku.',               5),
   (N'vedouci_lakovny',     N'Vedoucí lakovny',     N'Garant oblasti lakování.',                                     6),
   (N'pracovnik_skladu',    N'Pracovník skladu',    N'Garant oblasti VZV.',                                          7),
-  (N'management',          N'Management',          N'Pouze čtení. Přístup ke všem oblastem.',                       8),
-  (N'kiosek',              N'Kiosek',              N'Účet dotykového zařízení v dílně. Odklikává zakázky a zapisuje do deníku ve své oblasti.', 9)
+  (N'management',          N'Management',          N'Pouze čtení. Přístup ke všem oblastem.',                       8)
 ) as zdroj (kod, nazev, popis, poradi)
 on cil.kod = zdroj.kod
 when matched and (cil.nazev <> zdroj.nazev or isnull(cil.popis, N'') <> zdroj.popis or cil.poradi <> zdroj.poradi) then

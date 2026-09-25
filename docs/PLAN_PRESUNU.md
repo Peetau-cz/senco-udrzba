@@ -63,7 +63,7 @@ spouští služba (NSSM / IIS), certifikát HTTPS, cestu k adresáři na fotky (
 Každé kolo = commit(y) na `presun-sql-server`; před commitem `npm test`, `typecheck`,
 `lint`, `mssql:syntaxe`, s databází i `mssql:migrace && mssql:testy`.
 
-## K0 — úprava schématu (naslepo, tento týden)
+## K0 — úprava schématu (naslepo, tento týden) — **napsáno 25. 9.**, ověří K1
 
 `0001` ještě nikde neběželo, upravuje se přímo:
 

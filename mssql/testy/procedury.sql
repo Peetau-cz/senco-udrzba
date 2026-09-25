@@ -1,6 +1,7 @@
 -- =============================================================================
 -- Test procedur (0004): verze šablony, srovnání plánu, zakládání a dokončení
--- zakázek, oprávnění, karta a osobní číslo, přihlášení, plánovač.
+-- zakázek, oprávnění, přihlášení heslem a jeho zámek, plánovač. PIN a tablet
+-- testuje pin.sql.
 -- Případy převzaté ze supabase/tests/sablony.sql, plan.sql a planovac.sql.
 --
 -- Úmluva (scripts/mssql-testy.mjs): autocommit jako vlastník databáze,
@@ -232,32 +233,37 @@ exec sys.sp_set_session_context @key = N'osoba_id', @value = null;
 print N'5. dokončení zakázky';
 GO
 
--- 6. Karta a osobní číslo -----------------------------------------------------
-declare @kiosek uniqueidentifier = (select id from dbo.profil where osobni_cislo = 9001);
-declare @osoby table (id uniqueidentifier, jmeno nvarchar(100), prijmeni nvarchar(100), osobni_cislo int);
-if @kiosek is null throw 60000, N'6: chybí seed kiosku (osobní číslo 9001)', 1;
+-- 6. Přihlášení heslem ze ZAKMATu: osoba k osobnímu číslu, zámek hesla -------
+declare @osoba table (osoba_id uniqueidentifier, aktivni bit, ma_roli int);
+insert into @osoba exec dbo.osoba_pro_prihlaseni @osobni_cislo = 1003;
+if (select count(*) from @osoba where aktivni = 1 and ma_roli = 1) <> 1
+  throw 60000, N'6: osoba_pro_prihlaseni nenašla aktivního specialistu CNC s rolí', 1;
+delete from @osoba;
+insert into @osoba exec dbo.osoba_pro_prihlaseni @osobni_cislo = 999999;
+if exists (select 1 from @osoba) throw 60000, N'6: neznámé osobní číslo někoho našlo', 1;
 
-exec sys.sp_set_session_context @key = N'osoba_id', @value = @kiosek;
-insert into @osoby exec dbo.osoba_podle_karty @cislo = N' KARTA-2001 ';
-if (select count(*) from @osoby where osobni_cislo = 2001) <> 1
-  throw 60000, N'6: kiosek strojní nepoznal kartu člověka ze strojní', 1;
+-- 4 chyby nezamknou, pátá zamkne na 15 minut, úspěch po odemčení vynuluje.
+declare @stav table (zamceno_do datetime2(3));
+declare @i int = 1;
+while @i <= 4
+begin
+  exec dbo.zapis_pokusu_hesla @jmeno = N'test.zamek', @uspech = 0;
+  set @i += 1;
+end;
+insert into @stav exec dbo.stav_pokusu_hesla @jmeno = N'test.zamek';
+if (select zamceno_do from @stav) is not null throw 60000, N'6: čtyři chyby už zamkly', 1;
 
-delete from @osoby;
-insert into @osoby exec dbo.osoba_podle_karty @cislo = N'KARTA-2002';
-if exists (select 1 from @osoby)
-  throw 60000, N'6: kiosek strojní poznal člověka z lakovny', 1;
+exec dbo.zapis_pokusu_hesla @jmeno = N'test.zamek', @uspech = 0;
+delete from @stav;
+insert into @stav exec dbo.stav_pokusu_hesla @jmeno = N'test.zamek';
+if (select zamceno_do from @stav) is null or (select zamceno_do from @stav) < dateadd(minute, 14, sysutcdatetime())
+  throw 60000, N'6: pátá chyba nezamkla jméno na 15 minut', 1;
 
-delete from @osoby;
-insert into @osoby exec dbo.osoba_podle_osobniho_cisla @cislo = N' 2001 ';
-if (select count(*) from @osoby) <> 1
-  throw 60000, N'6: osobní číslo nenašlo člověka ze strojní', 1;
-
-delete from @osoby;
-insert into @osoby exec dbo.osoba_podle_osobniho_cisla @cislo = N'nesmysl';
-if exists (select 1 from @osoby)
-  throw 60000, N'6: nesmyslné osobní číslo někoho našlo', 1;
-exec sys.sp_set_session_context @key = N'osoba_id', @value = null;
-print N'6. karta a osobní číslo';
+exec dbo.zapis_pokusu_hesla @jmeno = N'test.zamek', @uspech = 1;
+delete from @stav;
+insert into @stav exec dbo.stav_pokusu_hesla @jmeno = N'test.zamek';
+if (select zamceno_do from @stav) is not null throw 60000, N'6: úspěch nezrušil zámek', 1;
+print N'6. přihlášení heslem a zámek';
 GO
 
 -- 7. Přihlášení ---------------------------------------------------------------

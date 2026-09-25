@@ -3,9 +3,10 @@
 --
 -- Přepis funkcí volaných z aplikace a z plánovače (větev `supabase`):
 -- zaloz_navrh_verze a srovnej_plan z 0010, aktivuj_verzi z 0006, zaloz_zakazky
--- z 0017, naplanuj_zarizeni z 0015, dokonci_zakazku z 0013, osoba_podle_karty
--- a osoba_podle_osobniho_cisla z 0024. Nové: nacti_prihlaseni a nastav_heslo
--- (náhrada Supabase Auth) a spust_planovac (náhrada pg_cron, R7).
+-- z 0017, naplanuj_zarizeni z 0015, dokonci_zakazku z 0013. Nové: přihlášení
+-- heslem (osoba_pro_prihlaseni, nacti_prihlaseni, nastav_heslo, zámek hesla),
+-- tablet a PIN pro dílnu (25. 9. 2026) a spust_planovac (náhrada pg_cron, R7).
+-- Karty a osoba_podle_karty / _osobniho_cisla z 0024 zanikly s kioskem.
 --
 -- SECURITY DEFINER -> WITH EXECUTE AS OWNER. Procedura pak běží jako dbo:
 -- řádková omezení ji pustí (výjimka pro db_owner, R3) a SESSION_CONTEXT
@@ -23,12 +24,17 @@
 --   50011 dokončit údržbu v oblasti     50141 zakázka už je uzavřená
 --   50012 plánovat údržbu v oblasti     50142 nevyřízené kroky checklistu
 --   50013 nastavit heslo                50143 chybí povinná fotografie
---                                       50151 aktivovat lze jen návrh
---   50201 zakázka neexistuje            50152 verze bez úkonu
---   50202 verze šablony neexistuje
---   50203 zařízení neexistuje           50301 plánovací okno záporné
---   50204 osoba neexistuje              50302 výpočet termínu se nesbíhá
---                                       50303 prázdný hash hesla
+--   50014 spravovat PIN                 50151 aktivovat lze jen návrh
+--   50015 registrovat / zrušit tablet   50152 verze bez úkonu
+--   50016 změnit PIN bez přihlášení
+--   50021 tablet není registrovaný      50301 plánovací okno záporné
+--                                       50302 výpočet termínu se nesbíhá
+--   50201 zakázka neexistuje            50303 prázdný hash hesla
+--   50202 verze šablony neexistuje      50304 PIN není 4-6 číslic
+--   50203 zařízení neexistuje           50305 slabý PIN
+--   50204 osoba neexistuje              50306 nový PIN = starý
+--   50205 tablet neexistuje             50307 chybí token tabletu
+--   50206 osoba nemá PIN                50308 tablet bez názvu
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -378,63 +384,385 @@ end;
 GO
 
 -- -----------------------------------------------------------------------------
--- Kdo přiložil kartu (dřív 0024)
+-- Tablet v dílně: registrace a přihlášení PINem (rozhodnuto 25. 9. 2026)
 --
--- Kiosek se tabulky karta nedotkne - zeptá se procedury a dostane jen jméno.
--- Osoba se vrátí jen tehdy, když volající vidí aspoň jednu z jejích oblastí:
--- kiosek strojní údržby nezjistí, kdo pracuje v lakovně.
+-- O přihlášení PINem rozhoduje databáze: tablet, zámek i PIN se ověří
+-- uvnitř, ven jde jen výsledek. Aplikace na tabulky tablet a pin nemá právo
+-- (R3), k tabulkám pustí procedury řetězení vlastnictví.
+--
+-- Token tabletu zná jen cookie tabletu; aplikace posílá jeho SHA-256.
+--
+-- POZOR pro aplikaci (R4, M7): prihlas_pinem a zmen_pin vracejí špatný PIN
+-- výsledkem, ne chybou, a počítadlo chyb si zapisují samy. Aplikace je nesmí
+-- volat uvnitř transakce, kterou pak vrátí - s ní by se vrátilo i počítadlo
+-- a zámek by nešlo nikdy dosáhnout.
 -- -----------------------------------------------------------------------------
 
-create procedure dbo.osoba_podle_karty
-  @cislo nvarchar(60)
-with execute as owner
+create procedure dbo.zaregistruj_tablet
+  @nazev      nvarchar(100),
+  @token_hash binary(32)
 as
 begin
   set nocount on;
-  select p.id, p.jmeno, p.prijmeni, p.osobni_cislo
-  from dbo.karta k
-  join dbo.profil p on p.id = k.profil_id
-  where k.aktivni = 1
-    and p.aktivni = 1
-    and ltrim(rtrim(k.cislo)) = ltrim(rtrim(@cislo))
-    and exists (
-      select 1 from dbo.uzivatel_oblast uo
-      where uo.uzivatel_id = p.id and dbo.ma_pristup_k_oblasti(uo.oblast_id) = 1
-    );
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50015, N'Tablet smí zaregistrovat jen administrátor.', 1;
+  if @token_hash is null
+    throw 50307, N'Chybí token tabletu.', 1;
+  if @nazev is null or len(ltrim(rtrim(@nazev))) = 0
+    throw 50308, N'Tablet musí mít název.', 1;
+
+  declare @id uniqueidentifier = newid();
+  begin tran;
+    insert into dbo.tablet (id, nazev, token_hash, vytvoril_id)
+    values (@id, ltrim(rtrim(@nazev)), @token_hash, dbo.aktualni_uzivatel());
+
+    insert into dbo.audit_log (tabulka, zaznam_id, operace, stary_stav, novy_stav, uzivatel_id)
+    values (N'tablet', lower(convert(nvarchar(100), @id)), N'INSERT', null,
+            (select lower(convert(nchar(36), @id)) as id, ltrim(rtrim(@nazev)) as nazev,
+                    cast(1 as bit) as aktivni
+             for json path, without_array_wrapper),
+            dbo.aktualni_uzivatel());
+  commit;
+
+  select @id as id;
 end;
 GO
 
--- Záloha pro toho, kdo si kartu nechal v bundě (rozhodnutí z 28. 8. 2026).
-create procedure dbo.osoba_podle_osobniho_cisla
-  @cislo nvarchar(30)
+create procedure dbo.zrus_tablet
+  @id uniqueidentifier
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50015, N'Tablet smí zrušit jen administrátor.', 1;
+
+  begin tran;
+    update dbo.tablet set aktivni = 0, zmeneno_at = sysutcdatetime()
+    where id = @id and aktivni = 1;
+    if @@rowcount = 0
+      throw 50205, N'Takový aktivní tablet neexistuje.', 1;
+
+    insert into dbo.audit_log (tabulka, zaznam_id, operace, stary_stav, novy_stav, uzivatel_id)
+    values (N'tablet', lower(convert(nvarchar(100), @id)), N'UPDATE',
+            N'{"aktivni":true}', N'{"aktivni":false}', dbo.aktualni_uzivatel());
+  commit;
+end;
+GO
+
+-- Kdo se na tabletu smí přihlásit: aktivní osoby s rolí a nastaveným PINem.
+-- Před přihlášením řádková omezení nad profil nikoho nepustí - proto EXECUTE
+-- AS OWNER; bez registrovaného tabletu se seznam jmen nevydá.
+create procedure dbo.seznam_pro_tablet
+  @token_hash binary(32)
 with execute as owner
 as
 begin
   set nocount on;
-  declare @cislo_int int = try_cast(ltrim(rtrim(@cislo)) as int);
-  select p.id, p.jmeno, p.prijmeni, p.osobni_cislo
+
+  declare @tablet uniqueidentifier =
+    (select id from dbo.tablet where token_hash = @token_hash and aktivni = 1);
+  if @tablet is null
+    throw 50021, N'Tablet není registrovaný. Požádejte administrátora.', 1;
+
+  update dbo.tablet set naposledy_at = sysutcdatetime() where id = @tablet;
+
+  select p.id, p.jmeno, p.prijmeni
   from dbo.profil p
   where p.aktivni = 1
-    and p.osobni_cislo = @cislo_int
-    and exists (
-      select 1 from dbo.uzivatel_oblast uo
-      where uo.uzivatel_id = p.id and dbo.ma_pristup_k_oblasti(uo.oblast_id) = 1
-    );
+    and exists (select 1 from dbo.uzivatel_role ur where ur.uzivatel_id = p.id)
+    and exists (select 1 from dbo.pin n where n.profil_id = p.id)
+  order by p.prijmeni, p.jmeno;
+end;
+GO
+
+-- Jádro ověření PINu se zámkem; volají ho jen prihlas_pinem a zmen_pin
+-- (aplikace na ně EXECUTE nemá). Vlastní transakce se zámkem řádku, aby dva
+-- souběžné pokusy nesečetly chyby špatně.
+--   @vysledek: ok | spatny_pin | zamceno | zamceno_trvale | bez_pinu
+create procedure dbo.over_pin_osoby
+  @osoba      uniqueidentifier,
+  @pin        nvarchar(20),
+  @vysledek   nvarchar(20) output,
+  @zamceno_do datetime2(3) output
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  declare @sul binary(16), @hash binary(64), @chyb int, @trvale bit, @ted datetime2(3) = sysutcdatetime();
+  set @zamceno_do = null;
+
+  begin tran;
+    select @sul = sul, @hash = hash, @chyb = chyb, @zamceno_do = zamceno_do, @trvale = zamceno_trvale
+    from dbo.pin with (updlock, holdlock)
+    where profil_id = @osoba;
+
+    if @sul is null
+    begin
+      set @vysledek = N'bez_pinu';
+      commit;
+      return;
+    end;
+    if @trvale = 1
+    begin
+      set @vysledek = N'zamceno_trvale';
+      commit;
+      return;
+    end;
+    if @zamceno_do > @ted
+    begin
+      set @vysledek = N'zamceno';
+      commit;
+      return;
+    end;
+
+    -- Nesmyslný vstup (písmena, špatná délka) se počítá jako špatný PIN.
+    if dbo.je_platny_pin(@pin) = 1 and dbo.hash_pinu(@sul, @pin) = @hash
+    begin
+      update dbo.pin set chyb = 0, zamceno_do = null where profil_id = @osoba;
+      set @zamceno_do = null;
+      set @vysledek = N'ok';
+      commit;
+      return;
+    end;
+
+    set @chyb += 1;
+    set @vysledek = N'spatny_pin';
+    set @zamceno_do = null;
+    if @chyb >= 10
+    begin
+      update dbo.pin set chyb = @chyb, zamceno_trvale = 1 where profil_id = @osoba;
+      set @vysledek = N'zamceno_trvale';
+    end
+    else if @chyb = 5
+    begin
+      set @zamceno_do = dateadd(minute, 15, @ted);
+      update dbo.pin set chyb = @chyb, zamceno_do = @zamceno_do where profil_id = @osoba;
+      set @vysledek = N'zamceno';
+    end
+    else
+      update dbo.pin set chyb = @chyb where profil_id = @osoba;
+
+    if @vysledek <> N'spatny_pin'
+      insert into dbo.audit_log (tabulka, zaznam_id, operace, stary_stav, novy_stav, uzivatel_id)
+      values (N'pin', lower(convert(nvarchar(100), @osoba)), N'UPDATE', null,
+              (select @vysledek as udalost, @chyb as chyb for json path, without_array_wrapper),
+              dbo.aktualni_uzivatel());
+  commit;
+end;
+GO
+
+-- Přihlášení PINem na tabletu. Vrací jeden řádek:
+--   vysledek (ok | spatny_pin | zamceno | zamceno_trvale | bez_pinu | neznama_osoba),
+--   tablet_id, musi_zmenit (jen u ok), zamceno_do (jen u zamceno).
+create procedure dbo.prihlas_pinem
+  @token_hash binary(32),
+  @osoba      uniqueidentifier,
+  @pin        nvarchar(20)
+with execute as owner
+as
+begin
+  set nocount on;
+
+  declare @tablet uniqueidentifier =
+    (select id from dbo.tablet where token_hash = @token_hash and aktivni = 1);
+  if @tablet is null
+    throw 50021, N'Tablet není registrovaný. Požádejte administrátora.', 1;
+
+  if not exists (
+    select 1 from dbo.profil p
+    where p.id = @osoba and p.aktivni = 1
+      and exists (select 1 from dbo.uzivatel_role ur where ur.uzivatel_id = p.id)
+  )
+  begin
+    select N'neznama_osoba' as vysledek, @tablet as tablet_id,
+           cast(null as bit) as musi_zmenit, cast(null as datetime2(3)) as zamceno_do;
+    return;
+  end;
+
+  declare @vysledek nvarchar(20), @zamceno_do datetime2(3);
+  exec dbo.over_pin_osoby @osoba = @osoba, @pin = @pin,
+       @vysledek = @vysledek output, @zamceno_do = @zamceno_do output;
+
+  if @vysledek = N'ok'
+    update dbo.tablet set naposledy_at = sysutcdatetime() where id = @tablet;
+
+  select @vysledek as vysledek, @tablet as tablet_id,
+         iif(@vysledek = N'ok', (select musi_zmenit from dbo.pin where profil_id = @osoba), null) as musi_zmenit,
+         @zamceno_do as zamceno_do;
+end;
+GO
+
+-- Admin nastaví dočasný PIN (i při zapomenutí). Osoba si ho při prvním
+-- přihlášení musí změnit; dřívější přihlášení té osoby přestanou platit.
+create procedure dbo.nastav_pin
+  @osoba uniqueidentifier,
+  @pin   nvarchar(20)
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50014, N'PIN smí nastavit jen administrátor.', 1;
+  if dbo.je_platny_pin(@pin) = 0
+    throw 50304, N'PIN musí mít 4 až 6 číslic.', 1;
+  if dbo.je_slaby_pin(@pin) = 1
+    throw 50305, N'PIN je příliš snadný (stejné číslice nebo řada). Zvolte jiný.', 1;
+  if not exists (select 1 from dbo.profil where id = @osoba)
+    throw 50204, N'Osoba neexistuje.', 1;
+
+  declare @sul binary(16) = crypt_gen_random(16);
+  begin tran;
+    update dbo.pin
+    set sul = @sul, hash = dbo.hash_pinu(@sul, @pin), musi_zmenit = 1, chyb = 0,
+        zamceno_do = null, zamceno_trvale = 0, zmeneno_at = sysutcdatetime()
+    where profil_id = @osoba;
+    if @@rowcount = 0
+      insert into dbo.pin (profil_id, sul, hash) values (@osoba, @sul, dbo.hash_pinu(@sul, @pin));
+
+    update dbo.profil set relace_platne_od = sysutcdatetime() where id = @osoba;
+
+    insert into dbo.audit_log (tabulka, zaznam_id, operace, stary_stav, novy_stav, uzivatel_id)
+    values (N'pin', lower(convert(nvarchar(100), @osoba)), N'UPDATE', null,
+            N'{"udalost":"nastaven_docasny"}', dbo.aktualni_uzivatel());
+  commit;
+end;
+GO
+
+-- Osoba si změní vlastní PIN (vynuceně po dočasném, nebo kdykoli). Nový PIN se
+-- kontroluje PŘED ověřením starého: chyba nového je THROW, a ten by s sebou
+-- vrátil i zapsané počítadlo chyb starého PINu. Špatný starý PIN se vrací
+-- výsledkem (vysledek jako u over_pin_osoby).
+create procedure dbo.zmen_pin
+  @stary nvarchar(20),
+  @novy  nvarchar(20)
+with execute as owner
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  declare @osoba uniqueidentifier = dbo.aktualni_uzivatel();
+  if @osoba is null
+    throw 50016, N'PIN si může změnit jen přihlášená osoba.', 1;
+  if dbo.je_platny_pin(@novy) = 0
+    throw 50304, N'PIN musí mít 4 až 6 číslic.', 1;
+  if dbo.je_slaby_pin(@novy) = 1
+    throw 50305, N'PIN je příliš snadný (stejné číslice nebo řada). Zvolte jiný.', 1;
+  if @novy = @stary
+    throw 50306, N'Nový PIN musí být jiný než původní.', 1;
+
+  declare @vysledek nvarchar(20), @zamceno_do datetime2(3);
+  exec dbo.over_pin_osoby @osoba = @osoba, @pin = @stary,
+       @vysledek = @vysledek output, @zamceno_do = @zamceno_do output;
+
+  if @vysledek = N'ok'
+  begin
+    declare @sul binary(16) = crypt_gen_random(16);
+    update dbo.pin
+    set sul = @sul, hash = dbo.hash_pinu(@sul, @novy), musi_zmenit = 0, zmeneno_at = sysutcdatetime()
+    where profil_id = @osoba;
+  end;
+
+  select @vysledek as vysledek, @zamceno_do as zamceno_do;
+end;
+GO
+
+create procedure dbo.odemkni_pin
+  @osoba uniqueidentifier
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50014, N'PIN smí odemknout jen administrátor.', 1;
+
+  begin tran;
+    update dbo.pin set chyb = 0, zamceno_do = null, zamceno_trvale = 0 where profil_id = @osoba;
+    if @@rowcount = 0
+      throw 50206, N'Osoba nemá nastavený PIN.', 1;
+
+    insert into dbo.audit_log (tabulka, zaznam_id, operace, stary_stav, novy_stav, uzivatel_id)
+    values (N'pin', lower(convert(nvarchar(100), @osoba)), N'UPDATE', null,
+            N'{"udalost":"odemcen"}', dbo.aktualni_uzivatel());
+  commit;
 end;
 GO
 
 -- -----------------------------------------------------------------------------
--- Přihlášení (náhrada Supabase Auth)
+-- Přihlášení heslem (náhrada Supabase Auth)
 --
--- Tabulku prihlaseni aplikace nevidí. nacti_prihlaseni běží ještě před
--- přihlášením, kdy řádková omezení nad profil nikoho nepustí - proto EXECUTE
--- AS OWNER. Heslo ověřuje aplikace (scrypt, src/lib/auth/heslo.ts); databáze
--- hash jen vydá.
+-- V provozu se kancelář přihlašuje heslem ze ZAKMATu: aplikace ho ověří pod
+-- udrzba_app proti ZAKMAT.dbo.UZIVATEL (procedura s EXECUTE AS OWNER do jiné
+-- databáze nesmí) a sem pošle jen osobní číslo -> osoba_pro_prihlaseni.
+-- Při vývoji a v e2e testech (PRIHLASENI_ZDROJ=vlastni) se seedové účty
+-- přihlašují vlastním heslem z dbo.prihlaseni -> nacti_prihlaseni.
 --
--- nastav_heslo naopak EXECUTE AS nemá: k tabulce ji pustí řetězení vlastnictví
--- a IS_MEMBER pak vidí skutečného volajícího - administrátora v aplikaci,
--- nebo skript seedu jako člena db_owner.
+-- Obě čtecí procedury běží před přihlášením, kdy řádková omezení nad profil
+-- nikoho nepustí - proto EXECUTE AS OWNER. nastav_heslo naopak EXECUTE AS
+-- nemá: k tabulce ji pustí řetězení vlastnictví a IS_MEMBER pak vidí
+-- skutečného volajícího - administrátora v aplikaci, nebo skript seedu jako
+-- člena db_owner.
 -- -----------------------------------------------------------------------------
+
+-- Osoba k osobnímu číslu, jehož heslo aplikace právě ověřila v ZAKMATu.
+create procedure dbo.osoba_pro_prihlaseni
+  @osobni_cislo int
+with execute as owner
+as
+begin
+  set nocount on;
+  select p.id as osoba_id, p.aktivni,
+         iif(exists (select 1 from dbo.uzivatel_role ur where ur.uzivatel_id = p.id), 1, 0) as ma_roli
+  from dbo.profil p
+  where p.osobni_cislo = @osobni_cislo;
+end;
+GO
+
+-- Zámek přihlášení heslem: 5 chyb = 15 minut. Jméno posílá aplikace už
+-- normalizované (malá písmena, bez domény). stav_pokusu_hesla vrací zamceno_do
+-- (NULL = volno); zapis_pokusu_hesla se volá po každém ověření, mimo transakci,
+-- kterou by aplikace mohla vrátit.
+create procedure dbo.stav_pokusu_hesla
+  @jmeno nvarchar(254)
+as
+begin
+  set nocount on;
+  select iif(zamceno_do > sysutcdatetime(), zamceno_do, null) as zamceno_do
+  from (select max(zamceno_do) as zamceno_do from dbo.pokus_hesla where jmeno = @jmeno) x;
+end;
+GO
+
+create procedure dbo.zapis_pokusu_hesla
+  @jmeno  nvarchar(254),
+  @uspech bit
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  begin tran;
+    if @uspech = 1
+      delete from dbo.pokus_hesla where jmeno = @jmeno;
+    else
+    begin
+      update dbo.pokus_hesla with (updlock, holdlock)
+      set chyb = chyb + 1,
+          zamceno_do = iif((chyb + 1) % 5 = 0, dateadd(minute, 15, sysutcdatetime()), zamceno_do),
+          zmeneno_at = sysutcdatetime()
+      where jmeno = @jmeno;
+      if @@rowcount = 0
+        insert into dbo.pokus_hesla (jmeno, chyb) values (@jmeno, 1);
+    end;
+  commit;
+end;
+GO
 
 create procedure dbo.nacti_prihlaseni
   @email nvarchar(254)

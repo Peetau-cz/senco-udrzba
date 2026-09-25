@@ -4,7 +4,7 @@
  *   npm run mssql:seed
  *
  * Nejdřív SQL soubory z mssql/seed/ (číselníky, umístění, stroje, šablony),
- * potom testovací osoby s rolemi, oblastmi, kartami a hesly
+ * potom testovací osoby s rolemi, oblastmi, hesly a PINy (SEED_PIN, výchozí 2580)
  * (scripts/lib/osoby-seed.mjs). Heslo pro všechny je SEED_HESLO,
  * výchozí Senco.Test123. NIKDY nespouštět proti ostré databázi.
  */

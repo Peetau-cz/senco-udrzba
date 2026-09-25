@@ -12,9 +12,9 @@ set nocount on;
 -- 1. Všechny tabulky existují (kdyby SQL Server odmítl kaskádové cesty, chyba
 --    1785 by zastavila už migraci - tady se jen počítá výsledek).
 declare @tabulek int = (select count(*) from sys.tables where schema_id = schema_id(N'dbo') and name <> N'_migrace');
-if @tabulek <> 24
-  throw 60000, N'1: očekáváno 24 tabulek (22 + prihlaseni + planovac_beh)', 1;
-print N'1. tabulek: 24';
+if @tabulek <> 26
+  throw 60000, N'1: očekáváno 26 tabulek (21 z PostgreSQL + prihlaseni, planovac_beh, tablet, pin, pokus_hesla)', 1;
+print N'1. tabulek: 26';
 GO
 
 -- 2. Šev identity: bez kontextu NULL, s kontextem id osoby, s nesmyslem NULL.
@@ -98,7 +98,7 @@ print N'4. CHECK na výčet a JSON';
 GO
 
 -- 5. Filtrované unikáty: dva lidé bez osobního čísla ano, stejný e-mail
---    v jiné velikosti písmen ne (kolace), dvě aktivní karty s jedním číslem ne.
+--    v jiné velikosti písmen ne (kolace), dva tablety se stejným tokenem ne.
 begin tran;
 insert into dbo.profil (jmeno, prijmeni) values (N'Bez', N'Čísla 1'), (N'Bez', N'Čísla 2');
 declare @a uniqueidentifier = newid(), @b uniqueidentifier = newid();
@@ -112,20 +112,17 @@ begin catch
   if error_number() <> 2601 or error_message() not like N'%profil_email_idx%'
     throw 60000, N'5: očekávána chyba 2601 s profil_email_idx', 1;
 end catch;
-insert into dbo.karta (profil_id, cislo) values (@a, N'TEST-KARTA-1');
+declare @token binary(32) = hashbytes('SHA2_256', N'test-token');
+insert into dbo.tablet (nazev, token_hash) values (N'Test 1', @token);
 begin try
-  insert into dbo.karta (profil_id, cislo) values (@a, N'TEST-KARTA-1');
-  throw 60000, N'5: druhá aktivní karta se stejným číslem prošla', 1;
+  insert into dbo.tablet (nazev, token_hash) values (N'Test 2', @token);
+  throw 60000, N'5: druhý tablet se stejným tokenem prošel', 1;
 end try
 begin catch
   if error_number() = 60000 throw;
-  if error_number() <> 2601 or error_message() not like N'%karta_cislo_idx%'
-    throw 60000, N'5: očekávána chyba 2601 s karta_cislo_idx', 1;
+  if error_number() <> 2627 or error_message() not like N'%tablet_token_hash_key%'
+    throw 60000, N'5: očekávána chyba 2627 s tablet_token_hash_key', 1;
 end catch;
-update dbo.karta set aktivni = 0 where profil_id = @a;
-insert into dbo.karta (profil_id, cislo) values (@a, N'TEST-KARTA-1');
-if (select count(*) from dbo.karta where cislo = N'TEST-KARTA-1') <> 2
-  throw 60000, N'5: po vyřazení má jít stejné číslo vydat znovu', 1;
 rollback;
 print N'5. filtrované unikáty a kolace';
 GO

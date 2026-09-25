@@ -1,5 +1,5 @@
 /**
- * Testovací osoby, jejich role, oblasti, karty a hesla (docs/NASAZENI.md).
+ * Testovací osoby, jejich role, oblasti, hesla a PINy (docs/NASAZENI.md).
  *
  * Nahrazuje `scripts/seed-users.mjs` ze Supabase. Hesla už nespravuje cizí
  * služba: hash počítá Node (src/lib/auth/heslo.ts) a ukládá se do tabulky
@@ -87,18 +87,17 @@ export const UZIVATELE = [
 ]
 
 /**
- * Lidé z dílny: mail ani heslo nemají, v systému jsou jako osoby bez
- * přihlášení a u kiosku (M7) se prokážou kartou. Kiosek sám je od přesunu
- * osoba s rolí `kiosek` bez přihlášení - technický e-mail ze Supabase padl.
+ * Lidé z dílny: mail ani heslo nemají. Na registrovaném tabletu se vyberou
+ * ze seznamu a potvrdí PINem (M7, rozhodnuto 25. 9. 2026). Karty a kiosek
+ * zanikly.
  */
-export const OSOBY_BEZ_UCTU = [
+export const DILNA = [
   {
     jmeno: 'Karel',
     prijmeni: 'Zámečník',
     osobniCislo: 2001,
     role: ['udrzbar'],
     oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
-    karta: 'KARTA-2001',
   },
   {
     jmeno: 'Alena',
@@ -106,17 +105,11 @@ export const OSOBY_BEZ_UCTU = [
     osobniCislo: 2002,
     role: ['udrzbar'],
     oblasti: [{ kod: 'lakovna', vztah: 'spolupracujici' }],
-    karta: 'KARTA-2002',
-  },
-  {
-    jmeno: 'Kiosek',
-    prijmeni: 'Strojní údržba',
-    osobniCislo: 9001,
-    role: ['kiosek'],
-    oblasti: [{ kod: 'strojni', vztah: 'spolupracujici' }],
-    karta: null,
   },
 ]
+
+/** Testovací PIN pro dílnu a údržbáře. Ne slabý (není řada ani stejné číslice). */
+export const SEED_PIN_VYCHOZI = '2580'
 
 async function mapaKodu(pool, tabulka) {
   const { recordset } = await pool.request().query(`select id, kod from dbo.[${tabulka}]`)
@@ -187,17 +180,27 @@ async function priradOblasti(pool, id, oblasti, oblastiDleKodu) {
   }
 }
 
-/** Unikátnost čísla platí jen mezi aktivními kartami, proto se hledá aktivní. */
-async function priradKartu(pool, id, cislo) {
-  await pool
+/**
+ * PIN dostane jen ten, kdo ještě žádný nemá. Nastavuje se procedurou (hash
+ * počítá databáze) a hned se zruší povinnost změny, ať testy nenarazí na
+ * vynucenou změnu dočasného PINu.
+ */
+async function nastavPinPokudChybi(pool, id, pin) {
+  const { recordset } = await pool
     .request()
     .input('profil_id', sql.UniqueIdentifier, id)
-    .input('cislo', sql.NVarChar(60), cislo)
+    .query('select 1 as ma from dbo.pin where profil_id = @profil_id')
+  if (recordset[0]) return false
+
+  await pool
+    .request()
+    .input('osoba', sql.UniqueIdentifier, id)
+    .input('pin', sql.NVarChar(20), pin)
     .query(
-      `insert into dbo.karta (profil_id, cislo)
-       select @profil_id, @cislo
-       where not exists (select 1 from dbo.karta where cislo = @cislo and aktivni = 1)`,
+      `exec dbo.nastav_pin @osoba = @osoba, @pin = @pin;
+       update dbo.pin set musi_zmenit = 0 where profil_id = @osoba;`,
     )
+  return true
 }
 
 /** Heslo dostane jen ten, kdo ještě žádné nemá - změna z aplikace přežije seed. */
@@ -218,10 +221,11 @@ async function nastavHesloPokudChybi(pool, id, heslo) {
 
 /**
  * @param {import('mssql').ConnectionPool} pool - připojení jako vlastník databáze
- * @param {{ heslo: string, log?: (radek: string) => void }} volby
+ * @param {{ heslo: string, pin?: string, log?: (radek: string) => void }} volby
  */
 export async function nahrajOsoby(pool, volby) {
   const log = volby.log ?? console.log
+  const pin = volby.pin ?? process.env.SEED_PIN ?? SEED_PIN_VYCHOZI
   const roleDleKodu = await mapaKodu(pool, 'role')
   const oblastiDleKodu = await mapaKodu(pool, 'oblast')
 
@@ -234,23 +238,25 @@ export async function nahrajOsoby(pool, volby) {
     await priradRole(pool, id, u.role, roleDleKodu)
     await priradOblasti(pool, id, u.oblasti, oblastiDleKodu)
     const noveHeslo = await nastavHesloPokudChybi(pool, id, volby.heslo)
+    // Údržbář se může přihlásit i na tabletu - ať e2e ověří obě cesty.
+    const novyPin = u.role.includes('udrzbar') ? await nastavPinPokudChybi(pool, id, pin) : false
     const oblasti = u.oblasti.length
       ? u.oblasti.map((o) => `${o.kod}/${o.vztah}`).join(', ')
       : 'všechny (dle role)'
     log(
-      `${novy ? '+' : '='} ${u.email.padEnd(26)} ${u.role.join(', ').padEnd(20)} ${oblasti}${noveHeslo ? '  (heslo nastaveno)' : ''}`,
+      `${novy ? '+' : '='} ${u.email.padEnd(26)} ${u.role.join(', ').padEnd(20)} ${oblasti}${noveHeslo ? '  (heslo nastaveno)' : ''}${novyPin ? '  (PIN nastaven)' : ''}`,
     )
   }
 
-  log('\nOsoby bez přihlášení (dílna a kiosek):')
-  for (const o of OSOBY_BEZ_UCTU) {
+  log('\nDílna (bez hesla, na tabletu PINem):')
+  for (const o of DILNA) {
     const { id, novy } = await najdiNeboZalozOsobu(pool, o)
     await priradRole(pool, id, o.role, roleDleKodu)
     await priradOblasti(pool, id, o.oblasti, oblastiDleKodu)
-    if (o.karta) await priradKartu(pool, id, o.karta)
+    const novyPin = await nastavPinPokudChybi(pool, id, pin)
     const oblasti = o.oblasti.map((x) => `${x.kod}/${x.vztah}`).join(', ')
     log(
-      `${novy ? '+' : '='} ${`${o.jmeno} ${o.prijmeni}`.padEnd(26)} ${(o.karta ?? 'bez karty').padEnd(20)} ${oblasti}`,
+      `${novy ? '+' : '='} ${`${o.jmeno} ${o.prijmeni}`.padEnd(26)} ${oblasti}${novyPin ? '  (PIN nastaven)' : ''}`,
     )
   }
 }

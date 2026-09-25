@@ -22,7 +22,7 @@
 --   on update cascade         -> vynecháno, uuid klíče se nemění
 --
 -- Názvy omezení zůstávají z PostgreSQL tam, kde je aplikace čte z chybových
--- hlášek (profil_osobni_cislo_key, profil_email_idx, karta_cislo_idx).
+-- hlášek (profil_osobni_cislo_key, profil_email_idx).
 -- CHECK omezení mají předponu ck_, aby je src/lib/db/chyby.ts poznalo
 -- v každém jazyce serveru.
 -- =============================================================================
@@ -225,8 +225,9 @@ create table dbo.umisteni (
 create index umisteni_nadrazene_idx on dbo.umisteni (nadrazene_id);
 GO
 
--- OSOBA, ne účet. Kdo se přihlašuje, má řádek v dbo.prihlaseni; lidé z dílny
--- ho nemají a prokazují se kartou. Sloupec ucet_id ze Supabase zmizel.
+-- OSOBA, ne účet. Kancelář se přihlašuje heslem ze ZAKMATu (podle osobního
+-- čísla; při vývoji z dbo.prihlaseni), dílna na tabletu PINem (dbo.pin).
+-- Sloupec ucet_id ze Supabase zmizel.
 create table dbo.profil (
   id               uniqueidentifier not null constraint df_profil_id default newid(),
   jmeno            nvarchar(100)    not null constraint df_profil_jmeno default N'',
@@ -280,23 +281,65 @@ create table dbo.uzivatel_oblast (
 create index uzivatel_oblast_oblast_idx on dbo.uzivatel_oblast (oblast_id);
 GO
 
--- Karty na turniket: identifikují, neautentizují. Vlastní tabulka, protože
--- číslo karty je osobní údaj a tabulkové právo by sloupcové omezení přebilo.
--- Karta se vyřazuje (aktivni = 0), nemaže - proto unikát jen mezi aktivními.
-create table dbo.karta (
-  id           uniqueidentifier not null constraint df_karta_id default newid(),
-  profil_id    uniqueidentifier not null,
-  cislo        nvarchar(60)     not null,
-  aktivni      bit              not null constraint df_karta_aktivni default 1,
-  poznamka     nvarchar(max)    null,
-  vytvoreno_at datetime2(3)     not null constraint df_karta_vytvoreno default sysutcdatetime(),
-  zmeneno_at   datetime2(3)     not null constraint df_karta_zmeneno default sysutcdatetime(),
-  constraint karta_pkey primary key (id),
-  constraint karta_profil_id_fkey foreign key (profil_id) references dbo.profil (id),
-  constraint ck_karta_cislo_neni_prazdne check (len(ltrim(rtrim(cislo))) > 0)
+-- -----------------------------------------------------------------------------
+-- Dílna na tabletu (rozhodnuto 25. 9. 2026, docs/NAVRH.md kap. 8)
+--
+-- Dělník se na registrovaném tabletu vybere ze seznamu a potvrdí PINem. Karty
+-- ani role kiosek už nejsou. Na tyhle tři tabulky nemá aplikace žádné právo
+-- (R3) - čtou a píšou je jen procedury z 0004, takže hash PINu ani token tabletu
+-- databázi neopustí.
+-- -----------------------------------------------------------------------------
+
+-- Tablet, na kterém se smí přihlašovat PINem. Uložený je jen SHA-256 tajného
+-- tokenu; token sám zná jen cookie tabletu, takže únik databáze ho neprozradí.
+-- Tablet se neruší smazáním, ale aktivni = 0 (audit ví, kdo co kdy zrušil).
+create table dbo.tablet (
+  id           uniqueidentifier not null constraint df_tablet_id default newid(),
+  nazev        nvarchar(100)    not null,
+  token_hash   binary(32)       not null,
+  aktivni      bit              not null constraint df_tablet_aktivni default 1,
+  vytvoril_id  uniqueidentifier null,
+  naposledy_at datetime2(3)     null,
+  vytvoreno_at datetime2(3)     not null constraint df_tablet_vytvoreno default sysutcdatetime(),
+  zmeneno_at   datetime2(3)     not null constraint df_tablet_zmeneno default sysutcdatetime(),
+  constraint tablet_pkey primary key (id),
+  constraint tablet_token_hash_key unique (token_hash),
+  constraint tablet_vytvoril_id_fkey foreign key (vytvoril_id) references dbo.profil (id),
+  constraint ck_tablet_nazev_neni_prazdny check (len(ltrim(rtrim(nazev))) > 0)
 );
-create unique index karta_cislo_idx  on dbo.karta (cislo) where aktivni = 1;
-create index        karta_profil_idx on dbo.karta (profil_id);
+GO
+
+-- PIN osoby. hash = SHA2-512(sůl + PIN), viz dbo.hash_pinu (0002). Čtyřmístný
+-- PIN má jen 10 000 kombinací, takže hash sám nechrání - chrání to, že tabulku
+-- nikdo mimo procedury nevidí, a zámek: 5 chyb = 15 minut, 10 chyb = natrvalo,
+-- dokud admin neodemkne. Bez auditního triggeru (hash do audit_log nepatří);
+-- nastavení, odemčení a zamčení zapisují procedury do auditu samy.
+create table dbo.pin (
+  profil_id      uniqueidentifier not null,
+  sul            binary(16)       not null,
+  hash           binary(64)       not null,
+  musi_zmenit    bit              not null constraint df_pin_musi_zmenit default 1,
+  chyb           int              not null constraint df_pin_chyb default 0,
+  zamceno_do     datetime2(3)     null,
+  zamceno_trvale bit              not null constraint df_pin_zamceno_trvale default 0,
+  zmeneno_at     datetime2(3)     not null constraint df_pin_zmeneno default sysutcdatetime(),
+  constraint pin_pkey primary key (profil_id),
+  constraint pin_profil_id_fkey foreign key (profil_id) references dbo.profil (id),
+  constraint ck_pin_chyb_nezaporne check (chyb >= 0)
+);
+GO
+
+-- Zámek přihlášení heslem (kancelář). Klíčem je zadané přihlašovací jméno
+-- v normalizovaném tvaru, ne osoba - zamyká se i jméno, které neexistuje, ať
+-- z odpovědi nejde poznat, kdo účet má. 5 chyb = 15 minut, bez trvalého zámku
+-- (heslo spravuje ZAKMAT a trvalé zamčení by šlo zneužít k vyřazení kanceláře).
+create table dbo.pokus_hesla (
+  jmeno      nvarchar(254) not null,
+  chyb       int           not null constraint df_pokus_hesla_chyb default 0,
+  zamceno_do datetime2(3)  null,
+  zmeneno_at datetime2(3)  not null constraint df_pokus_hesla_zmeneno default sysutcdatetime(),
+  constraint pokus_hesla_pkey primary key (jmeno)
+);
 GO
 
 -- Audit plní výhradně triggery (0003); aplikační účet má jen SELECT.
