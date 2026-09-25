@@ -32,6 +32,10 @@ ručně v aplikaci.
 | Nasazení                | loginy a migrace na ostré `Udrzba`, web na serveru jako služba za HTTPS, noční úloha, adresář fotek v zálohách, první admin                               |
 | Návod                   | jedna strana pro dílnu (tablet, PIN, checklist) a jedna pro garanty                                                                                       |
 
+**Evidence strojů začíná znovu** (rozhodnuto 25. 9.): ve firmě už nějaká evidence zařízení
+v databázi je, ale pro Údržbu se nepřebírá. Garanti ale mají **zadávat stejné inventární
+číslo** jako v dosavadní evidenci — podle něj se později napojí QR štítky nebo import.
+
 **Až po vydání 1:** přidat osobu ze ZAKMATu výběrem (zatím ručně s osobním číslem, obrazovka
 existuje), změna PINu kdykoli z menu (vynucená změna při prvním přihlášení zůstává), QR štítky,
 import CSV, e-mailové notifikace.
