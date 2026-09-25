@@ -202,7 +202,7 @@ Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run
 | R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument                                                                                                         | **hotovo 8. 9. 2026**                                                     |
 | R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`. Před prvním spuštěním úprava podle 25. 9.: tabulky `tablet` a `pin`, procedury PINu, pryč role `kiosek` a tabulka `karta` | napsáno naslepo, čeká na `Udrzba_dev` na TEST                             |
 | R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                                                                                                                  | napsáno naslepo (`0002`–`0005`, seed `04`, 4 testy), čeká na `Udrzba_dev` |
-| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                                                                                                                         |                                                                           |
+| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                                                                                                                         | napsáno naslepo (`0006_prava`, test `prava`), čeká na `Udrzba_dev`        |
 | R4   | `src/lib/db/`, přihlášení heslem a relace (připravené na druh „tablet"), `src/proxy.ts`, první řez; e2e přihlášení                                                                                                      |                                                                           |
 | R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky                                                                                                   |                                                                           |
 | R6   | soubory na disku a route handler `/soubory/…`                                                                                                                                                                           |                                                                           |
@@ -239,6 +239,13 @@ Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–2
 - **Chybějící BLOCK predikát znamená „povoleno".** Kde Postgres neměl politiku (INSERT a
   DELETE na `zakazka`, DELETE na `provozni_denik`, vše na `audit_log`…), nesmí mít
   `udrzba_app` GRANT. Blokovaný UPDATE hlásí chybu 33504, ne nula řádků.
+- **Predikát RLS nesmí číst tabulku, nad kterou sám visí.** `ma_roli` čte `uzivatel_role`;
+  filtr nad `uzivatel_role`, který volá `ma_roli`, by se zacyklil. Proto `uzivatel_role`
+  a `uzivatel_oblast` filtr nemají, aplikace na ně nemá právo a čte přes pohledy
+  `v_uzivatel_*`, zapisuje procedurami.
+- **Mazání objektů v testech musí respektovat závislosti.** CHECK a výchozí hodnoty volají
+  funkce, funkce se `SCHEMABINDING` drží tabulky i jiné funkce — `scripts/lib/obnova.mjs`
+  maže omezení, pak funkce dokola, pak tabulky.
 - **Trigger v SQL Serveru běží až po zápisu.** Zámek, který v PostgreSQL běžel BEFORE,
   musí rozhodovat podle `deleted`, ne podle tabulky — jinak by si uživatel přepsal
   `vytvoreno_at` a obešel okno na opravu deníku (`smi_menit_zapis_deniku` bere hodnoty).

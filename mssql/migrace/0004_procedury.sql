@@ -26,7 +26,9 @@
 --   50013 nastavit heslo                50143 chybí povinná fotografie
 --   50014 spravovat PIN                 50151 aktivovat lze jen návrh
 --   50015 registrovat / zrušit tablet   50152 verze bez úkonu
---   50016 změnit PIN bez přihlášení
+--   50016 změnit PIN bez přihlášení     50309 role nejsou platný JSON
+--   50017 přidělovat role               50310 oblasti nejsou platný JSON
+--   50018 přidělovat oblasti
 --   50021 tablet není registrovaný      50301 plánovací okno záporné
 --                                       50302 výpočet termínu se nesbíhá
 --   50201 zakázka neexistuje            50303 prázdný hash hesla
@@ -800,6 +802,86 @@ begin
 
     -- Přihlášení vydaná se starým heslem přestanou platit.
     update dbo.profil set relace_platne_od = sysutcdatetime() where id = @profil_id;
+  commit;
+end;
+GO
+
+-- -----------------------------------------------------------------------------
+-- Role a oblasti osoby (správa uživatelů, M6)
+--
+-- Tabulky uzivatel_role a uzivatel_oblast nemají řádkový filtr (zacyklil by se
+-- s pomocnými funkcemi oprávnění) a aplikace na ně nemá právo - čte přes
+-- pohledy v_uzivatel_role / v_uzivatel_oblast (0005) a zapisuje tady. Stav se
+-- nastaví celý: co v seznamu není, se odebere. Smí jen administrátor (dřív
+-- politiky uzivatel_role_zapis / uzivatel_oblast_zapis).
+--   @role    = JSON pole id rolí:              ["<uuid>", ...]
+--   @oblasti = JSON pole oblastí se vztahem:   [{"oblast_id":"<uuid>","vztah":"garant"}, ...]
+-- -----------------------------------------------------------------------------
+
+create procedure dbo.nastav_role_osoby
+  @osoba uniqueidentifier,
+  @role  nvarchar(max)
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50017, N'Role smí přidělovat jen administrátor.', 1;
+  if @role is null or isjson(@role) = 0
+    throw 50309, N'Seznam rolí není platný JSON.', 1;
+
+  declare @nove table (role_id uniqueidentifier primary key);
+  insert into @nove (role_id)
+  select distinct try_cast(r.[value] as uniqueidentifier)
+  from openjson(@role) r
+  where try_cast(r.[value] as uniqueidentifier) is not null;
+
+  begin tran;
+    delete ur from dbo.uzivatel_role ur
+    where ur.uzivatel_id = @osoba
+      and not exists (select 1 from @nove n where n.role_id = ur.role_id);
+
+    insert into dbo.uzivatel_role (uzivatel_id, role_id)
+    select @osoba, n.role_id from @nove n
+    where not exists (select 1 from dbo.uzivatel_role ur where ur.uzivatel_id = @osoba and ur.role_id = n.role_id);
+  commit;
+end;
+GO
+
+create procedure dbo.nastav_oblasti_osoby
+  @osoba   uniqueidentifier,
+  @oblasti nvarchar(max)
+as
+begin
+  set nocount on;
+  set xact_abort on;
+
+  if is_member(N'db_owner') = 0 and dbo.ma_roli(N'administrator') = 0
+    throw 50018, N'Oblasti smí přidělovat jen administrátor.', 1;
+  if @oblasti is null or isjson(@oblasti) = 0
+    throw 50310, N'Seznam oblastí není platný JSON.', 1;
+
+  declare @nove table (oblast_id uniqueidentifier primary key, vztah nvarchar(30) not null);
+  insert into @nove (oblast_id, vztah)
+  select try_cast(json_value(o.[value], N'$.oblast_id') as uniqueidentifier),
+         isnull(json_value(o.[value], N'$.vztah'), N'spolupracujici')
+  from openjson(@oblasti) o
+  where try_cast(json_value(o.[value], N'$.oblast_id') as uniqueidentifier) is not null;
+
+  begin tran;
+    delete uo from dbo.uzivatel_oblast uo
+    where uo.uzivatel_id = @osoba
+      and not exists (select 1 from @nove n where n.oblast_id = uo.oblast_id);
+
+    update uo set vztah = n.vztah
+    from dbo.uzivatel_oblast uo
+    join @nove n on n.oblast_id = uo.oblast_id
+    where uo.uzivatel_id = @osoba and uo.vztah <> n.vztah;
+
+    insert into dbo.uzivatel_oblast (uzivatel_id, oblast_id, vztah)
+    select @osoba, n.oblast_id, n.vztah from @nove n
+    where not exists (select 1 from dbo.uzivatel_oblast uo where uo.uzivatel_id = @osoba and uo.oblast_id = n.oblast_id);
   commit;
 end;
 GO

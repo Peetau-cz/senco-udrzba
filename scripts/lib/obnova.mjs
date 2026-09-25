@@ -14,8 +14,17 @@
 
 import { nazevDatabaze, popisChyby, pripoj, spustDavku } from './mssql.mjs'
 
-/** Smaže v databázi všechny uživatelské objekty (ne loginy, ne uživatele). */
+/**
+ * Smaže v databázi všechny uživatelské objekty (ne loginy, uživatele ani role).
+ *
+ * Pořadí je dané závislostmi: CHECK omezení a výchozí hodnoty volají funkce
+ * (dbo.dnes(), tvarové kontroly JSON), funkce se SCHEMABINDING drží tabulky
+ * i jiné funkce a predikáty RLS drží obojí. Proto nejdřív politiky, cizí klíče
+ * a omezení, pak pohledy a procedury, funkce opakovaně, dokud nějaká jde
+ * smazat (řetězy SCHEMABINDING), a teprve potom tabulky a schémata.
+ */
 export const SMAZANI_OBJEKTU = `
+set xact_abort off;
 declare @sql nvarchar(max) = N'';
 
 -- 1. bezpečnostní politiky (drží predikátové funkce i tabulky)
@@ -29,25 +38,70 @@ from sys.foreign_keys fk
   join sys.tables t on t.object_id = fk.parent_object_id
   join sys.schemas s on s.schema_id = t.schema_id;
 
--- 3. pohledy, procedury, funkce (triggery zmizí s tabulkami)
-select @sql += N'drop ' + case o.type
-    when 'V' then N'view ' when 'P' then N'procedure ' else N'function ' end
+-- 3. CHECK omezení a výchozí hodnoty (volají funkce)
+select @sql += N'alter table ' + quotename(s.name) + N'.' + quotename(t.name)
+  + N' drop constraint ' + quotename(c.name) + N';' + char(10)
+from (select name, parent_object_id from sys.check_constraints
+      union all
+      select name, parent_object_id from sys.default_constraints) c
+  join sys.tables t on t.object_id = c.parent_object_id
+  join sys.schemas s on s.schema_id = t.schema_id
+where t.is_ms_shipped = 0;
+
+-- 4. pohledy a procedury (triggery zmizí s tabulkami)
+select @sql += N'drop ' + case o.type when 'V' then N'view ' else N'procedure ' end
   + quotename(s.name) + N'.' + quotename(o.name) + N';' + char(10)
 from sys.objects o join sys.schemas s on s.schema_id = o.schema_id
-where o.type in ('V', 'P', 'FN', 'IF', 'TF') and o.is_ms_shipped = 0;
+where o.type in ('V', 'P') and o.is_ms_shipped = 0;
 
--- 4. tabulky
+exec sp_executesql @sql;
+
+-- 5. funkce: dokola, dokud se daří (funkce drží jiné funkce přes SCHEMABINDING)
+declare @nazev nvarchar(600), @smazano int = 1;
+while @smazano > 0 and exists (
+  select 1 from sys.objects where type in ('FN', 'IF', 'TF') and is_ms_shipped = 0)
+begin
+  set @smazano = 0;
+  declare funkce cursor local fast_forward for
+    select quotename(s.name) + N'.' + quotename(o.name)
+    from sys.objects o join sys.schemas s on s.schema_id = o.schema_id
+    where o.type in ('FN', 'IF', 'TF') and o.is_ms_shipped = 0;
+  open funkce;
+  fetch next from funkce into @nazev;
+  while @@fetch_status = 0
+  begin
+    begin try
+      exec (N'drop function ' + @nazev + N';');
+      set @smazano += 1;
+    end try
+    begin catch
+    end catch;
+    fetch next from funkce into @nazev;
+  end;
+  close funkce;
+  deallocate funkce;
+end;
+
+-- 6. tabulky
+set @sql = N'';
 select @sql += N'drop table ' + quotename(s.name) + N'.' + quotename(t.name) + N';' + char(10)
 from sys.tables t join sys.schemas s on s.schema_id = t.schema_id
 where t.is_ms_shipped = 0;
 
--- 5. vlastní schémata (bezpecnost apod.)
+-- 7. vlastní schémata (bezpecnost apod.)
 select @sql += N'drop schema ' + quotename(name) + N';' + char(10)
 from sys.schemas
 where schema_id between 5 and 16383 and name not in ('guest', 'INFORMATION_SCHEMA', 'sys')
   and principal_id = 1;
 
-exec sp_executesql @sql;`
+exec sp_executesql @sql;
+
+-- Kdyby něco zůstalo (funkce držená tabulkou), dojde k tomu až po tabulkách.
+declare @zbyva nvarchar(max) = N'';
+select @zbyva += N'drop function ' + quotename(s.name) + N'.' + quotename(o.name) + N';' + char(10)
+from sys.objects o join sys.schemas s on s.schema_id = o.schema_id
+where o.type in ('FN', 'IF', 'TF') and o.is_ms_shipped = 0;
+exec sp_executesql @zbyva;`
 
 export async function smazVsechnyObjekty(pool) {
   await spustDavku(pool, SMAZANI_OBJEKTU)

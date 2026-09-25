@@ -223,3 +223,38 @@ outer apply (
   where df.zaznam_id = d.id
 ) fd;
 GO
+
+-- -----------------------------------------------------------------------------
+-- Role a oblasti osob (náhrada politik uzivatel_role_select / uzivatel_oblast_select
+-- z PostgreSQL 0001)
+--
+-- Tabulky uzivatel_role a uzivatel_oblast nemají řádkový filtr: čtou je pomocné
+-- funkce oprávnění (ma_roli, ma_pristup_k_oblasti), které volají predikáty
+-- všech ostatních tabulek, a filtr nad nimi by se zacyklil (predikát -> ma_roli
+-- -> tatáž tabulka -> predikát). Aplikace proto na tabulky nemá právo (R3)
+-- a čte přes tyhle pohledy se stejným pravidlem jako dřív: vlastní řádky,
+-- administrátor, vedoucí údržby a management všechny. Zapisuje procedurami
+-- nastav_role_osoby a nastav_oblasti_osoby (0004).
+-- -----------------------------------------------------------------------------
+
+create view dbo.v_uzivatel_role
+as
+select ur.uzivatel_id, ur.role_id
+from dbo.uzivatel_role ur
+where is_member(N'db_owner') = 1
+   or ur.uzivatel_id = dbo.aktualni_uzivatel()
+   or dbo.ma_roli(N'administrator') = 1
+   or dbo.ma_roli(N'vedouci_udrzby') = 1
+   or dbo.ma_roli(N'management') = 1;
+GO
+
+create view dbo.v_uzivatel_oblast
+as
+select uo.uzivatel_id, uo.oblast_id, uo.vztah
+from dbo.uzivatel_oblast uo
+where is_member(N'db_owner') = 1
+   or uo.uzivatel_id = dbo.aktualni_uzivatel()
+   or dbo.ma_roli(N'administrator') = 1
+   or dbo.ma_roli(N'vedouci_udrzby') = 1
+   or dbo.ma_roli(N'management') = 1;
+GO

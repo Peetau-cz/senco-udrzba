@@ -91,7 +91,12 @@ Já: `mssql:prozkoumej`, `mssql:migrace`, `mssql:seed`, `mssql:testy` → opravy
 nejsou všechny testy zelené. **Zkouška hesla:** uživatel zadá své heslo do malého skriptu,
 který zkusí UTF-8 / UTF-16LE / CP1250 proti jeho hashi v ZAKMATu — výsledek určí kódování.
 
-## R3 — řádková práva a granty (`0006_prava.sql`)
+## R3 — řádková práva a granty (`0006_prava.sql`) — **napsáno 25. 9.**, ověří K1
+
+Odchylka od návrhu níž: `uzivatel_role` a `uzivatel_oblast` **nemají filtr** (predikát by se
+zacyklil s `ma_roli`); aplikace je čte přes pohledy `v_uzivatel_role` / `v_uzivatel_oblast`
+a zapisuje procedurami `nastav_role_osoby` / `nastav_oblasti_osoby` — v R5 (osoby) se
+na ně přepíše `nastavZarazeni`. Opravena i obnova databáze v testech (pořadí mazání objektů).
 
 - schéma `bezpecnost`, jeden predikát (inline TVF, schemabound) na tabulku, výjimka
   `IS_MEMBER('db_owner')`; `SECURITY POLICY` s FILTER a BLOCK (AFTER INSERT, AFTER UPDATE,
