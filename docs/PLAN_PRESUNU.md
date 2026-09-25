@@ -19,19 +19,42 @@ kap. 8 (M7). Tenhle soubor se odškrtává po kolech.
 - **Do `main` až funguje celý web na SQL Serveru** (konec R8). Do té doby `main` drží
   funkční verzi nad Supabase.
 
+## Vydání 1 — co musí mít, aby se začalo používat
+
+Rozhodnuto 25. 9. 2026 (nadřízení tlačí na vydání): **celý dnešní web + tablety pro dílnu**,
+na ostré databázi `Udrzba` (instance ZAKMAT). Server domluvený, stroje a šablony zadají garanti
+ručně v aplikaci.
+
+| Musí mít                | Obsah                                                                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Celý web na SQL Serveru | K0–R8: všechny obrazovky M0–M6, přihlášení heslem ze ZAKMATu, soubory, plánovač                                                                           |
+| Tablety (jádro M7)      | registrace tabletu, přihlášení jménem + PINem, rám bez menu, odhlášení po 5 min, „Moje práce", admin nastaví / odemkne PIN, vynucená změna dočasného PINu |
+| Nasazení                | loginy a migrace na ostré `Udrzba`, web na serveru jako služba za HTTPS, noční úloha, adresář fotek v zálohách, první admin                               |
+| Návod                   | jedna strana pro dílnu (tablet, PIN, checklist) a jedna pro garanty                                                                                       |
+
+**Až po vydání 1:** přidat osobu ze ZAKMATu výběrem (zatím ručně s osobním číslem, obrazovka
+existuje), změna PINu kdykoli z menu (vynucená změna při prvním přihlášení zůstává), QR štítky,
+import CSV, e-mailové notifikace.
+
+**Od IT k serveru potřebuji:** název serveru a adresu webu, jestli je tam Node.js LTS, jak se
+spouští služba (NSSM / IIS), certifikát HTTPS, cestu k adresáři na fotky (v zálohách).
+
+**Odhad:** ~4 týdny práce od dodání databází (R3–R8 2–3 týdny, M7 ~1 týden, nasazení 2–3 dny).
+
 ## Pořadí prací
 
-| Kolo | Co                                                                                     | Kdy                      |
-| ---- | -------------------------------------------------------------------------------------- | ------------------------ |
-| K0   | úprava schématu (tablet, PIN, pryč karty)                                              | **teď, naslepo**         |
-| K1   | první spuštění na `Udrzba_dev`, oprava R1–R2 do zelena                                 | den, kdy je DB           |
-| R3   | řádková práva a granty                                                                 | naslepo teď, ověřit v K1 |
-| R4   | datová vrstva, přihlášení, `proxy.ts`, první obrazovky                                 | po K1                    |
-| R5   | zbylé obrazovky, jedna oblast za commit                                                |                          |
-| R6   | soubory na disku                                                                       |                          |
-| R7   | noční plánovač                                                                         |                          |
-| R8   | úklid Supabase, dokumenty, PR do `main`                                                |                          |
-| M7   | tablet: registrace, přihlášení PINem, rám, „Moje práce", správa PINů, osoby ze ZAKMATu | po R8                    |
+| Kolo | Co                                                                   | Kdy                      |
+| ---- | -------------------------------------------------------------------- | ------------------------ |
+| K0   | úprava schématu (tablet, PIN, pryč karty)                            | **teď, naslepo**         |
+| K1   | první spuštění na `Udrzba_dev`, oprava R1–R2 do zelena               | den, kdy je DB           |
+| R3   | řádková práva a granty                                               | naslepo teď, ověřit v K1 |
+| R4   | datová vrstva, přihlášení, `proxy.ts`, první obrazovky               | po K1                    |
+| R5   | zbylé obrazovky, jedna oblast za commit                              |                          |
+| R6   | soubory na disku                                                     |                          |
+| R7   | noční plánovač                                                       |                          |
+| R8   | úklid Supabase, dokumenty, PR do `main`                              |                          |
+| M7   | tablet: registrace, přihlášení PINem, rám, „Moje práce", správa PINů | po R8                    |
+| V1   | nasazení na ostrou `Udrzba`, návody, **vydání 1**                    | po M7                    |
 
 Každé kolo = commit(y) na `presun-sql-server`; před commitem `npm test`, `typecheck`,
 `lint`, `mssql:syntaxe`, s databází i `mssql:migrace && mssql:testy`.
