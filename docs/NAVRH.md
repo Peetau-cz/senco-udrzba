@@ -659,7 +659,7 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M4** Dashboard a plnění | KPI, dnešní plán, po termínu, matice plnění, export | vedoucí a management mají přehled |
 | **M5** Deník a historie | neplánované zásahy, sjednocená historie | kompletní historie zařízení |
 | **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti | provozní připravenost |
-| **M7** Dílna | registrace tabletů, přihlášení jménem a PINem, správa PINů, režim „Moje práce", výběr osob ze ZAKMATu (QR štítky a tisk protokolů vyřazeny 25. 9. 2026) | nasazení do provozu |
+| **M7** Dílna | registrace tabletů, přihlášení jménem a PINem, správa PINů, režim „Moje práce", výběr osob ze ZAKMATu (tisk protokolů vyřazen 25. 9. 2026; QR štítky až nadstavba po spuštění — stroje už štítky mají, zjistit co kódují) | nasazení do provozu |
 
 **Jak se přihlásí dílna (rozhodnuto 25. 9. 2026).** Dělník nemá e-mail ani heslo. Pevné
 kiosky na zdi nebudou — **sdílené jednoduché tablety s fotoaparátem**, bez čtečky karet

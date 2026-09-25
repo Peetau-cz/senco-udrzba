@@ -13,7 +13,9 @@ kap. 8 (M7). Tenhle soubor se odškrtává po kolech.
   (`prihlaseni`, seedové účty), přepíná `PRIHLASENI_ZDROJ=zakmat|vlastni`.
 - **Dílna:** registrovaný tablet, výběr jména, vlastní PIN ověřovaný uvnitř databáze
   (NAVRH kap. 8). Tablet používá **stejné obrazovky v jiném rámu** (bez bočního menu).
-- **Karty a role `kiosek` zanikají.** QR štítky a tisk protokolů **vyřazeny**.
+- **Karty a role `kiosek` zanikají.** Tisk protokolů vyřazen. **QR štítky až jako nadstavba
+  po spuštění:** stroje už nějaké QR štítky mají, ale není jasné, co kódují — zjistit a napojit
+  na běžící web (sken → karta stroje, nový zásah).
 - **Do `main` až funguje celý web na SQL Serveru** (konec R8). Do té doby `main` drží
   funkční verzi nad Supabase.
 
