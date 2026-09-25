@@ -120,7 +120,9 @@ osoby, oblasti, role → druhy zásahu. Vzor v každé oblasti:
   `zaregistruj_tablet` + dlouhodobá httpOnly cookie zařízení;
 - `/tablet`: dlaždice se jmény (`seznam_pro_tablet`), hledání, naposledy přihlášení nahoře
   (localStorage), číselná klávesnice PINu → `prihlas_pinem` → relace druhu `tablet`
-  (10 min, prodlužuje se aktivitou); bez cookie tabletu stránka nic neukáže;
+  (**5 min nečinnosti**, rozhodnuto 25. 9.; prodlužuje se aktivitou, 30 s předem výzva
+  „Klepněte pro pokračování", odpočet stojí, dokud je otevřený fotoaparát nebo se nahrává
+  fotka); bez cookie tabletu stránka nic neukáže;
 - **rám tabletu** v `(aplikace)/layout.tsx`: místo bočního menu horní lišta (jméno, Moje
   práce, Nový zásah, Změnit PIN, **Hotovo – odhlásit**), odpočet nečinnosti na klientu;
 - „Moje práce": dnešní a zpožděné zakázky své profese ve svých oblastech + volné
