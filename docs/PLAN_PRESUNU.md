@@ -85,6 +85,8 @@ Každé kolo = commit(y) na `presun-sql-server`; před commitem `npm test`, `typ
 
 ## K1 — první spuštění (den, kdy je DB)
 
+**Stav 25. 9.:** připojení na instanci TEST ověřeno, `Udrzba_dev` zatím chybí.
+
 Uživatel: loginy na TEST (`senco_udr_test` v `db_owner`, `udrzba_app`, `udrzba_planovac`,
 `udrzba_app` SELECT na `UZIVATEL` v kopii ZAKMATu), `.env.local`, název kopie ZAKMATu.
 Já: `mssql:prozkoumej`, `mssql:migrace`, `mssql:seed`, `mssql:testy` → opravy, dokud
