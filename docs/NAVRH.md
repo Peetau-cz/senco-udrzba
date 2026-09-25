@@ -16,7 +16,7 @@ Zadání neurčuje šest věcí, které přímo ovlivňují datový model. Všec
 | P1 | Základ intervalu údržby | **POTVRZENO: pouze kalendářní intervaly** (dny, týdny, měsíce, roky) | Motohodiny se neevidují. Výpočet termínu je uzavřen v jediné SQL funkci `dalsi_termin()`, aby případné pozdější doplnění motohodin byla lokální změna, ne přepis plánovače. |
 | P2 | Výpočet dalšího termínu | **POTVRZENO: nastavitelné na úkonu, výchozí pevný kalendář** (od plánovaného termínu) | Původně se počítalo s plovoucí variantou, zadavatel ale při vkládání harmonogramu CNC upřesnil, že termín je vždy k pevně danému datu. Plovoucí varianta zůstává volitelná na úkonu. Sloupec `interval_zaklad`, výchozí hodnotu mění migrace `0009`. |
 | P3 | Definice „Plnění %" | **POTVRZENO:** `splněno / (splněno + po termínu)` za kalendářní měsíc | Údržba dokončená po termínu se počítá jako *po termínu*. Úkony, jejichž termín ještě nenastal, se nepočítají. Sedí na příklad v zadání (124 / 126 = 98 %). |
-| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. **7. 9. 2026: nahrazeno** — dílna mail nemá, přihlášení bude vlastní; viz `docs/NASAZENI.md`. **25. 9. 2026:** kancelář a garanti e-mailem a heslem, dílna na registrovaném tabletu **výběrem jména a vlastním PINem** (kap. 8, M7). |
+| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. **7. 9. 2026: nahrazeno** — dílna mail nemá, přihlášení bude vlastní; viz `docs/NASAZENI.md`. **25. 9. 2026:** kancelář a garanti e-mailem a heslem ze ZAKMATu, dílna na registrovaném tabletu **výběrem jména a vlastním PINem** (kap. 8, M7). |
 | P5 | Kde poběží data | **POTVRZENO:** Supabase Cloud, **region EU** | Vývoj běží rovnou proti cloudovému vývojovému projektu, bez Dockeru. Self-hosting zůstává možný bez zásahu do kódu. **7. 9. 2026: nahrazeno** — ostrý provoz bude mimo Supabase na firemním serveru (PostgreSQL nebo SQL Server podle IT); viz `docs/NASAZENI.md`. |
 | P6 | Migrace ze stávajících Excelů | **POTVRZENO:** Import **zařízení a šablon** přes CSV; historii nepřevádět, staré Excely archivovat jako přílohu | Import nekonzistentní historie by znehodnotil KPI plnění hned na startu. |
 
@@ -659,7 +659,7 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M4** Dashboard a plnění | KPI, dnešní plán, po termínu, matice plnění, export | vedoucí a management mají přehled |
 | **M5** Deník a historie | neplánované zásahy, sjednocená historie | kompletní historie zařízení |
 | **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti | provozní připravenost |
-| **M7** Dílna | registrace tabletů, přihlášení jménem a PINem, správa PINů, režim „Moje práce", výběr osob ze ZAKMATu, QR štítky na strojích, tisk protokolů | nasazení do provozu |
+| **M7** Dílna | registrace tabletů, přihlášení jménem a PINem, správa PINů, režim „Moje práce", výběr osob ze ZAKMATu (QR štítky a tisk protokolů vyřazeny 25. 9. 2026) | nasazení do provozu |
 
 **Jak se přihlásí dílna (rozhodnuto 25. 9. 2026).** Dělník nemá e-mail ani heslo. Pevné
 kiosky na zdi nebudou — **sdílené jednoduché tablety s fotoaparátem**, bez čtečky karet
@@ -715,8 +715,9 @@ Model je na obojí připravený, kdyby se rozhodnutí někdy otočilo, ale nesta
    pokryje reálná data.
 6. **Tablety pro dílnu (M7):** kolik a jaké (Android + Chrome, fotoaparát) a pokrytí haly
    Wi-Fi (IT).
-7. **Přihlášení e-mailem:** jak ZAKMAT počítá hash hesla (Delphi kód) — rozhodne, jestli
-   se kancelář přihlašuje heslem ze ZAKMATu, nebo vlastním.
+7. ~~Přihlášení e-mailem~~ — **rozhodnuto 25. 9. 2026:** kancelář heslem ze ZAKMATu
+   (e-mail nebo jeho část před @). Kódování hesla se zjistí zkouškou na vlastním účtu
+   (`docs/PLAN_PRESUNU.md`, K1).
 
 ---
 

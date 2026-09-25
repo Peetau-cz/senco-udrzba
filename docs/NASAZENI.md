@@ -191,6 +191,9 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 
 ## 5. Postup prací
 
+**Podrobné pořadí od 25. 9. 2026 je v `docs/PLAN_PRESUNU.md`** (kola K0, K1, R3–R8, M7);
+tabulka níž je přehled.
+
 Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run typecheck`,
 `npm run lint`; po každém kole s databází `npm run mssql:migrace && npm run mssql:testy`.
 
