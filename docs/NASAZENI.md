@@ -44,16 +44,16 @@ bez Supabase, `supabase` zůstane stát.
 
 ### Mění se
 
-| Vrstva          | Dnes                                   | Po přesunu                                                                                                                                                                   |
-| --------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Přihlášení      | Supabase Auth (GoTrue), e-mail + heslo | vlastní: e-mail + heslo (hash scrypt v tabulce `prihlaseni`, ke které aplikace nemá SELECT), relace v podepsané cookie; karta zatím jen jako funkce v databázi (kiosek = M7) |
-| Šev identity    | `aktualni_uzivatel()` čte `auth.uid()` | `SESSION_CONTEXT('osoba_id')`, nastavuje se v každé transakci; hodnota je rovnou **id osoby**                                                                                |
-| Přístup k datům | supabase-js přes PostgREST             | Kysely s `MssqlDialect` (tedious), jeden aplikační login `udrzba_app`                                                                                                        |
-| Soubory         | Supabase Storage, 3 nádoby, 12 politik | adresář na serveru aplikace (`SOUBORY_ADRESAR`), route handler `/soubory/…`; o přístupu rozhoduje tentýž dotaz, který dnes rozhoduje politika úložiště                       |
-| Noční plánovač  | `pg_cron`                              | SQL Server Agent (záložně Plánovač úloh Windows), účet `udrzba_planovac`                                                                                                     |
-| SQL testy       | 11 souborů plpgsql v SQL editoru       | T-SQL v `mssql/testy/`, spouští `npm run mssql:testy`                                                                                                                        |
-| Migrace         | ručně v SQL editoru                    | `npm run mssql:migrace` (tabulka `_migrace` s otiskem)                                                                                                                       |
-| Realtime        | —                                      | — (nepoužívá se)                                                                                                                                                             |
+| Vrstva          | Dnes                                   | Po přesunu                                                                                                                                                                       |
+| --------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Přihlášení      | Supabase Auth (GoTrue), e-mail + heslo | vlastní: e-mail + heslo (hash scrypt v tabulce `prihlaseni`, ke které aplikace nemá SELECT), relace v podepsané cookie; dílna kartou na registrovaném tabletu (M7, NAVRH kap. 8) |
+| Šev identity    | `aktualni_uzivatel()` čte `auth.uid()` | `SESSION_CONTEXT('osoba_id')`, nastavuje se v každé transakci; hodnota je rovnou **id osoby**                                                                                    |
+| Přístup k datům | supabase-js přes PostgREST             | Kysely s `MssqlDialect` (tedious), jeden aplikační login `udrzba_app`                                                                                                            |
+| Soubory         | Supabase Storage, 3 nádoby, 12 politik | adresář na serveru aplikace (`SOUBORY_ADRESAR`), route handler `/soubory/…`; o přístupu rozhoduje tentýž dotaz, který dnes rozhoduje politika úložiště                           |
+| Noční plánovač  | `pg_cron`                              | SQL Server Agent (záložně Plánovač úloh Windows), účet `udrzba_planovac`                                                                                                         |
+| SQL testy       | 11 souborů plpgsql v SQL editoru       | T-SQL v `mssql/testy/`, spouští `npm run mssql:testy`                                                                                                                            |
+| Migrace         | ručně v SQL editoru                    | `npm run mssql:migrace` (tabulka `_migrace` s otiskem)                                                                                                                           |
+| Realtime        | —                                      | — (nepoužívá se)                                                                                                                                                                 |
 
 ---
 
@@ -98,6 +98,12 @@ bez Supabase, `supabase` zůstane stát.
 - `src/lib/auth/` — `heslo.ts` (scrypt), `relace.ts` (podepsaná cookie), `overovatel.ts`
   (rozhraní pro ověření hesla — dnes vlastní hash, později případně ZAKMAT), `session.ts`
   beze změny tvaru. `src/proxy.ts` ověřuje jen podpis cookie, bez databáze.
+- **Dva druhy relace** (rozhodnuto 25. 9. 2026): heslem (kancelář, garanti, běžná
+  platnost) a **kartou na registrovaném tabletu** (dílna; krátká, odhlášení po nečinnosti,
+  relace nese id tabletu). Tablet se registruje jednou adminem: tabulka `tablet` (hash
+  tajného tokenu, aktivní, naposledy viděn) a dlouhodobá httpOnly cookie zařízení. Kartu
+  aplikace dohledá v ZAKMATu (`UZIVATEL_KARTA`, aktivní `UZIVATEL`) pod `udrzba_app`
+  a do Údržby pošle až osobní číslo.
 - `src/lib/storage/` — disk místo Supabase Storage, stejná tři jména funkcí.
 - **Nově půjde nastavit heslo z aplikace** na kartě osoby (jen administrátor); Supabase to
   neumožňovalo.
@@ -182,17 +188,17 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run typecheck`,
 `npm run lint`; po každém kole s databází `npm run mssql:migrace && npm run mssql:testy`.
 
-| Kolo | Obsah                                                                                                                 | Stav                                                                      |
-| ---- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026**                                                     |
-| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | napsáno naslepo, čeká na `Udrzba_dev` na TEST                             |
-| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                | napsáno naslepo (`0002`–`0005`, seed `04`, 4 testy), čeká na `Udrzba_dev` |
-| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                                                                           |
-| R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                                                                           |
-| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                                                                           |
-| R6   | soubory na disku a route handler `/soubory/…`                                                                         |                                                                           |
-| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                             |                                                                           |
-| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`     |                                                                           |
+| Kolo | Obsah                                                                                                                                                                        | Stav                                                                      |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument                                                              | **hotovo 8. 9. 2026**                                                     |
+| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`. Před prvním spuštěním doplnit tabulku `tablet` a zrušit roli `kiosek` (25. 9.) | napsáno naslepo, čeká na `Udrzba_dev` na TEST                             |
+| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                                                                       | napsáno naslepo (`0002`–`0005`, seed `04`, 4 testy), čeká na `Udrzba_dev` |
+| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                                                                              |                                                                           |
+| R4   | `src/lib/db/`, přihlášení heslem a relace (připravené na druh „tablet"), `src/proxy.ts`, první řez; e2e přihlášení                                                           |                                                                           |
+| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky                                                        |                                                                           |
+| R6   | soubory na disku a route handler `/soubory/…`                                                                                                                                |                                                                           |
+| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                                                                                    |                                                                           |
+| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`                                                            |                                                                           |
 
 Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–25 pracovních dní,
 3–5 týdnů kalendářně. R0 a psaní T-SQL jdou dělat i bez databáze, otestovat se bez ní nedají.
@@ -259,8 +265,13 @@ Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–2
   Plánovač úloh.
 - **Podpisový klíč relace je stejně citlivý jako servisní klíč.** Kdo ho drží, vydá si
   libovolnou identitu. Patří výhradně na server, nikdy do gitu.
-- **Kód karty.** Formát v personalistice nemusí odpovídat tomu, co čte čtečka. Ověřit před
-  stavbou párování (otázka 5).
+- **Kód karty.** Formát v ZAKMATu (hex, 9–10 znaků) nemusí odpovídat tomu, co čte čtečka.
+  Ověřit na 2–3 kartách před stavbou přihlášení kartou (otázka 5).
+- **Číslo karty je jen řetězec.** USB čtečka ho „napíše" jako klávesnice — kdo ho zná,
+  napíše ho taky. Proto přihlášení kartou jen na registrovaném tabletu.
+- **Procedura s `EXECUTE AS OWNER` nesmí číst ZAKMAT.** Zosobnění se do jiné databáze
+  nepustí (bez `TRUSTWORTHY`, který nechceme). Co se čte ze ZAKMATu, čte aplikace pod
+  `udrzba_app`; proceduře v Údržbě předá výsledek (osobní číslo).
 
 ---
 

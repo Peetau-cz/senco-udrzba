@@ -16,7 +16,7 @@ Zadání neurčuje šest věcí, které přímo ovlivňují datový model. Všec
 | P1 | Základ intervalu údržby | **POTVRZENO: pouze kalendářní intervaly** (dny, týdny, měsíce, roky) | Motohodiny se neevidují. Výpočet termínu je uzavřen v jediné SQL funkci `dalsi_termin()`, aby případné pozdější doplnění motohodin byla lokální změna, ne přepis plánovače. |
 | P2 | Výpočet dalšího termínu | **POTVRZENO: nastavitelné na úkonu, výchozí pevný kalendář** (od plánovaného termínu) | Původně se počítalo s plovoucí variantou, zadavatel ale při vkládání harmonogramu CNC upřesnil, že termín je vždy k pevně danému datu. Plovoucí varianta zůstává volitelná na úkonu. Sloupec `interval_zaklad`, výchozí hodnotu mění migrace `0009`. |
 | P3 | Definice „Plnění %" | **POTVRZENO:** `splněno / (splněno + po termínu)` za kalendářní měsíc | Údržba dokončená po termínu se počítá jako *po termínu*. Úkony, jejichž termín ještě nenastal, se nepočítají. Sedí na příklad v zadání (124 / 126 = 98 %). |
-| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. **7. 9. 2026: nahrazeno** — dílna mail nemá, přihlášení bude vlastní (mail + heslo, karta); viz `docs/NASAZENI.md`. |
+| P4 | Přihlašování | **POTVRZENO 12. 8. 2026:** Supabase Auth e-mail + heslo, s připravenou vazbou na **Entra ID (SSO)** | Rychlý start; SSO se zapíná konfigurací, model rolí se nemění. Ověřit, že firemní účet mají i všichni údržbáři v dílně, nejen kancelář. **7. 9. 2026: nahrazeno** — dílna mail nemá, přihlášení bude vlastní; viz `docs/NASAZENI.md`. **25. 9. 2026:** kancelář a garanti e-mailem a heslem, dílna **kartou na registrovaném tabletu** (kap. 8, M7). |
 | P5 | Kde poběží data | **POTVRZENO:** Supabase Cloud, **region EU** | Vývoj běží rovnou proti cloudovému vývojovému projektu, bez Dockeru. Self-hosting zůstává možný bez zásahu do kódu. **7. 9. 2026: nahrazeno** — ostrý provoz bude mimo Supabase na firemním serveru (PostgreSQL nebo SQL Server podle IT); viz `docs/NASAZENI.md`. |
 | P6 | Migrace ze stávajících Excelů | **POTVRZENO:** Import **zařízení a šablon** přes CSV; historii nepřevádět, staré Excely archivovat jako přílohu | Import nekonzistentní historie by znehodnotil KPI plnění hned na startu. |
 
@@ -659,7 +659,26 @@ Zadání žádá implementaci po modulech s kontrolou a schválením po každém
 | **M4** Dashboard a plnění | KPI, dnešní plán, po termínu, matice plnění, export | vedoucí a management mají přehled |
 | **M5** Deník a historie | neplánované zásahy, sjednocená historie | kompletní historie zařízení |
 | **M6** Audit a správa | auditní log, správa uživatelů, oblasti a garanti | provozní připravenost |
-| **M7** Dílna | QR štítky, ladění pro tablet, tisk protokolů | nasazení do provozu |
+| **M7** Dílna | registrace tabletů, přihlášení kartou, režim „Moje práce", výběr osob ze ZAKMATu, QR štítky na strojích, tisk protokolů | nasazení do provozu |
+
+**Jak se přihlásí dílna (rozhodnuto 25. 9. 2026).** Dělník nemá e-mail ani heslo, jen kartu
+na turniket. Pevné kiosky na zdi nebudou — **sdílené tablety** (fotka musí vzniknout u stroje).
+
+- **Karta přihlásí konkrétního člověka**, bez PINu (nahrazuje podpis jako u turniketu).
+  Audit, `dokoncil_id`, `zapsal_id` i okno 24 h na opravu deníku pak patří člověku, ne
+  oddělení. Role `kiosek` a „účet zařízení" z návrhu z 28. 8. zanikají.
+- **Jen na registrovaném tabletu.** Číslo karty je řetězec, který čtečka „napíše" — kdo ho
+  zná, napsal by ho sám. Admin proto tablet jednou zaregistruje (dlouhodobá cookie zařízení,
+  tabulka `tablet`, odebrání v `/nastaveni/tablety`) a kartou se přihlásit jde jen na něm.
+- **Čísla karet ze ZAKMATu** (`UZIVATEL_KARTA`), osoby se do Údržby vybírají ze ZAKMATu
+  (jméno a osobní číslo se převezmou, roli a oblast přidělí admin). Vlastní párování karet
+  (obrazovka existuje) zůstává jako záloha, kdyby čtečka dávala jiné číslo.
+- **Relace na tabletu je krátká** (odhlášení po několika minutách nečinnosti, tlačítko
+  „Hotovo – odhlásit", jiná karta přepne člověka). Checklist se ukládá po krocích, nic se
+  neztratí.
+- **Zapomenutá karta:** náhradní cesta není. Přihlásí se kolega a vyplní „provedl".
+- **Hardware:** Android tablet s Chrome, externí USB čtečka (karty mají 10 hex znaků, nejspíš
+  125 kHz, a ty tablet sám nepřečte), Wi-Fi v hale.
 
 **Až po M7** (rozhodnutí uživatele z 19. 8. 2026):
 
@@ -687,6 +706,10 @@ Model je na obojí připravený, kdyby se rozhodnutí někdy otočilo, ale nesta
 4. ~~Offline režim pro tablety v hale~~ — **zamítnuto 27. 8. 2026**, nestaví se.
 5. Dodat vzorek stávajících Excelů — podle nich se navrhne importér a ověří, že model
    pokryje reálná data.
+6. **Karty pro tablet (M7):** jaký typ karet firma má (125 kHz / 13,56 MHz) a jestli
+   čtečka dá stejné číslo, jaké je v ZAKMATu `UZIVATEL_KARTA` — ověřit na 2–3 kartách.
+7. **Přihlášení e-mailem:** jak ZAKMAT počítá hash hesla (Delphi kód) — rozhodne, jestli
+   se kancelář přihlašuje heslem ze ZAKMATu, nebo vlastním.
 
 ---
 
