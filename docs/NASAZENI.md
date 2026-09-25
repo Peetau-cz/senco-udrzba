@@ -61,12 +61,23 @@ bez Supabase, `supabase` zůstane stát.
 
 ### Databáze `Udrzba`
 
-- **Tři účty:** `udrzba_migrace` — vlastník databáze, jen migrace, seed a testy;
-  `udrzba_app` — běh aplikace, jen práva z migrace, RLS ho omezuje; `udrzba_planovac` —
-  jen `EXECUTE dbo.spust_planovac`. Aplikace se **nikdy nepřipojuje jako vlastník**.
-- **Kolace `Czech_100_CI_AS`** (nebo stejná jako ZAKMAT), compatibility level 150,
-  `RECURSIVE_TRIGGERS OFF`, `READ_COMMITTED_SNAPSHOT ON`. Co přesně založit, vypíše
-  `npm run mssql:init -- --jen-vypis`.
+- **Dvě instance na `SENS-SQL`:** `TEST` = vývoj (`Udrzba_dev` vedle kopie ZAKMATu),
+  `ZAKMAT` = ostrý provoz (`Udrzba` vedle ostrého ZAKMATu). `Udrzba` je vždy na téže
+  instanci jako ZAKMAT — dotaz přes instance nejde.
+- **Tři účty** (na každé instanci zvlášť, loginy se mezi instancemi nesdílejí):
+  - **účet pro migrace** — člen `db_owner`; na TEST `senco_udr_test`, lokálně
+    `udrzba_migrace`; jen migrace, seed a testy (`MSSQL_MIGRACE_*`). Vlastníkem databáze
+    je ten, kdo ji založil (IT);
+  - `udrzba_app` — běh aplikace, jen práva z migrace, RLS ho omezuje; v ZAKMATu smí jen
+    `SELECT` na `dbo.UZIVATEL` a `dbo.UZIVATEL_KARTA` (přihlášení, karty);
+  - `udrzba_planovac` — jen `EXECUTE dbo.spust_planovac`.
+
+  Aplikace se **nikdy nepřipojuje jako účet pro migrace**: člena `db_owner` řádková
+  práva neomezují.
+
+- **Kolace `SQL_Czech_CP1250_CI_AS`** (stejná jako ZAKMAT, aby dotazy přes obě databáze
+  nepadaly na konfliktu kolací), compatibility level **130** — server je SQL Server 2016
+  a výš neumí, `RECURSIVE_TRIGGERS OFF`, `READ_COMMITTED_SNAPSHOT ON`.
 - **RLS:** schéma `bezpecnost`, predikáty jako inline funkce se `SCHEMABINDING`, na každou
   tabulku jedna `SECURITY POLICY` (FILTER pro čtení, BLOCK pro zápis). Pomocné funkce
   `ma_roli`, `ma_pristup_k_oblasti`, `je_garantem_oblasti`, `muze_zapisovat`,
@@ -95,17 +106,47 @@ bez Supabase, `supabase` zůstane stát.
 
 ## 4. Co potřebujeme od IT
 
-### Žádost o vývojovou databázi
+### Založení databází (požadavek podán 24. 9. 2026, IT slíbilo do týdne)
 
-> Prosím o založení databáze `Udrzba_dev` na SQL Serveru (kolace `Czech_100_CI_AS`, pokud
-> ZAKMAT nemá jinou, pak stejnou jako ZAKMAT; compatibility level 150,
-> `READ_COMMITTED_SNAPSHOT ON`) a tří SQL loginů: `udrzba_migrace` jako vlastník této
-> databáze, `udrzba_app` a `udrzba_planovac` jen s `CONNECT` (práva jim nastaví migrační
-> skripty). Databáze slouží k vývoji náhrady za Supabase: data mají zůstat ve firmě, dílna
-> se bude hlásit kartou, osoby přijdou z personalistiky. Skripty nic mimo tuto databázi
-> nemění. Stejným postupem později vznikne ostrá `Udrzba`. Dále prosím o verzi a edici
-> serveru (`SELECT @@VERSION`), zda běží SQL Server Agent, a zda lze v této databázi
-> vytvářet snímky (`CREATE DATABASE … AS SNAPSHOT`) pro testy.
+IT zakládá jen databáze; vlastníkem je ten, kdo je založí. Loginy a jejich práva si
+zařídí autor projektu sám, tabulky vytvoří `npm run mssql:migrace`.
+
+> **Prosím o založení dvou databází na SENS-SQL:**
+>
+> 1. `Udrzba_dev` na instanci **TEST** (vývoj)
+> 2. `Udrzba` na instanci **ZAKMAT** (ostrý provoz)
+>
+> Obě: kolace `SQL_Czech_CP1250_CI_AS`, compatibility level `130`,
+> `READ_COMMITTED_SNAPSHOT ON`, `RECURSIVE_TRIGGERS OFF`. `Udrzba` prosím zařadit do
+> pravidelných záloh.
+
+```sql
+-- SENS-SQL\TEST
+CREATE DATABASE Udrzba_dev COLLATE SQL_Czech_CP1250_CI_AS;
+GO
+ALTER DATABASE Udrzba_dev SET COMPATIBILITY_LEVEL = 130;
+ALTER DATABASE Udrzba_dev SET READ_COMMITTED_SNAPSHOT ON;
+ALTER DATABASE Udrzba_dev SET RECURSIVE_TRIGGERS OFF;
+GO
+
+-- SENS-SQL\ZAKMAT
+CREATE DATABASE Udrzba COLLATE SQL_Czech_CP1250_CI_AS;
+GO
+ALTER DATABASE Udrzba SET COMPATIBILITY_LEVEL = 130;
+ALTER DATABASE Udrzba SET READ_COMMITTED_SNAPSHOT ON;
+ALTER DATABASE Udrzba SET RECURSIVE_TRIGGERS OFF;
+GO
+```
+
+### Loginy (zařídí autor projektu, na každé instanci zvlášť)
+
+| Login                                       | V databázi Údržby              | V ZAKMATu (na TEST jeho kopie)                   |
+| ------------------------------------------- | ------------------------------ | ------------------------------------------------ |
+| účet pro migrace (`senco_udr_test` na TEST) | člen `db_owner`                | — (pro průzkum stačí `SELECT` níž)               |
+| `udrzba_app`                                | uživatel bez práv (dá migrace) | `SELECT` na `dbo.UZIVATEL`, `dbo.UZIVATEL_KARTA` |
+| `udrzba_planovac`                           | uživatel bez práv (dá migrace) | —                                                |
+
+Tabulky se ručně nezakládají — jinak nesedí evidence `_migrace`.
 
 Záložní cesta, kdyby databáze na serveru nešla: **SQL Server Developer Edition** na vývojovém
 počítači (bezplatná plná edice; Basic install, Mixed Mode, TCP zapnuté), databázi a loginy
@@ -115,15 +156,16 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 
 1. **Jak ZAKMAT ověřuje heslo** (tabulka, sloupec, algoritmus, sůl, kódování; Delphi kód
    ověření) — rozhodne, zda se web přihlašuje proti ZAKMATu, nebo vede vlastní hesla.
-2. `SELECT @@VERSION`, edice (Express = bez Agenta, bez snímků, limit 10 GB), instance
-   a port, certifikát TLS na instanci (jde nastavit `MSSQL_TRUST_CERT=ne`?).
-3. Ostrá databáze `Udrzba` se stejnými třemi účty jako vývojová; kdo drží hesla;
-   kolace databáze ZAKMATu.
+2. ~~Verze a edice~~ — **zjištěno 8. 9.:** `SENS-SQL\ZAKMAT` je SQL Server 2016 SP3
+   Standard (dynamický port). Zbývá: verze instance `TEST`, přesný název kopie ZAKMATu na
+   TEST (zjistí `npm run mssql:prozkoumej`) a certifikát TLS (`MSSQL_TRUST_CERT=ne`?).
+3. ~~Ostrá databáze~~ — **požádáno 24. 9.** spolu s vývojovou. Loginy na instanci ZAKMAT
+   se zakládají znovu (z TEST se nepřenášejí), s jinými hesly.
 4. SQL Server Agent: k dispozici? Smí úloha běžet jako `udrzba_planovac`? Jinak
    Plánovač úloh Windows na aplikačním serveru.
-5. Pohled jen pro čtení nad uživateli, zaměstnanci a kartami ZAKMATu (osobní číslo, jméno,
-   karta, datum výstupu) a způsob přístupu (uživatel `udrzba_app` v databázi ZAKMAT se
-   SELECT na pohled, nebo `DB_CHAINING`). **Je číslo karty v evidenci totéž, co přečte naše
+5. ~~Přístup k uživatelům a kartám ZAKMATu~~ — **rozhodnuto 24. 9.:** `udrzba_app` dostane
+   `SELECT` přímo na `dbo.UZIVATEL` a `dbo.UZIVATEL_KARTA` — ve vývoji v kopii ZAKMATu na
+   TEST, v provozu v ostrém ZAKMATu; bez pohledu a bez `DB_CHAINING`. Zbývá: **je číslo karty v evidenci totéž, co přečte naše
    čtečka?** Ověřit na dvou třech kartách dřív, než se na to postaví párování.
 6. Windows Server pro Node: verze, Node LTS, jak se spouští služba (NSSM/WinSW, nebo IIS
    jako reverzní proxy), TLS, hostname.
@@ -140,28 +182,34 @@ pak založí `npm run mssql:init`. Kód se neliší, jen `.env.local`.
 Jedno kolo = jeden commit ke kontrole. Před každým kolem `npm test`, `npm run typecheck`,
 `npm run lint`; po každém kole s databází `npm run mssql:migrace && npm run mssql:testy`.
 
-| Kolo | Obsah                                                                                                                 | Stav                  |
-| ---- | --------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026** |
-| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | čeká na databázi      |
-| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                |                       |
-| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                       |
-| R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                       |
-| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                       |
-| R6   | soubory na disku a route handler `/soubory/…`                                                                         |                       |
-| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                             |                       |
-| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`     |                       |
+| Kolo | Obsah                                                                                                                 | Stav                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| R0   | větve `supabase` / `presun-sql-server`, závislosti, spouštěče `npm run mssql:*`, `.env.example`, tento dokument       | **hotovo 8. 9. 2026**                                                     |
+| R1   | `mssql/migrace/0001_schema.sql` — tabulky, CHECKy, indexy, `prihlaseni`; seed; test `schema`                          | napsáno naslepo, čeká na `Udrzba_dev` na TEST                             |
+| R2   | funkce, triggery (audit generovaný), procedury (`zaloz_zakazky`, `dokonci_zakazku`…), pohledy; 8 testů                | napsáno naslepo (`0002`–`0005`, seed `04`, 4 testy), čeká na `Udrzba_dev` |
+| R3   | RLS, účty, granty; testy práv jako `udrzba_app`                                                                       |                                                                           |
+| R4   | `src/lib/db/`, přihlášení a relace, `src/proxy.ts`, první řez (zařízení, umístění, typy); e2e přihlášení              |                                                                           |
+| R5   | zbývající domény, jedna za commit: šablony, plán a zakázky, plnění a export, deník, audit, osoby a oblasti, číselníky |                                                                           |
+| R6   | soubory na disku a route handler `/soubory/…`                                                                         |                                                                           |
+| R7   | noční plánovač: úloha Agenta (`mssql/agent/`), záložní `npm run planovac`                                             |                                                                           |
+| R8   | úklid: smazat `supabase/` a balíčky Supabase, dokumenty (`PROVOZ.md`, `NAVRH.md`, `README.md`), e2e, PR do `main`     |                                                                           |
 
 Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–25 pracovních dní,
 3–5 týdnů kalendářně. R0 a psaní T-SQL jdou dělat i bez databáze, otestovat se bez ní nedají.
 
+**Až IT připraví `Udrzba_dev` a budou loginy:** `.env.local` na `SENS-SQL` / instance `TEST` /
+`Udrzba_dev`, `MSSQL_MIGRACE_USER=senco_udr_test`; ověřit čtením
+(`npm run mssql:prozkoumej -- --databaze=Udrzba_dev,<kopie ZAKMATu>`), pak
+`npm run mssql:migrace && npm run mssql:seed && npm run mssql:testy`.
+
 ### Nasazení na ostrý server (až po R8)
 
-1. IT založí `Udrzba` a tři loginy (jako u vývojové databáze), Node LTS na aplikačním
-   serveru, adresář pro soubory v zálohách.
+1. Databáze `Udrzba` na instanci **ZAKMAT** už existuje (požádáno 24. 9.). Loginy znovu
+   a s jinými hesly podle tabulky v kap. 4, `SELECT` pro `udrzba_app` v ostrém ZAKMATu;
+   Node LTS na aplikačním serveru, adresář pro soubory v zálohách.
 2. `npm ci && npm run build`; `.env` s `MSSQL_*` (jen `udrzba_app`), `RELACE_TAJEMSTVI`,
    `SOUBORY_ADRESAR`.
-3. `npm run mssql:migrace` pod `udrzba_migrace`; první správce dostane heslo skriptem
+3. `npm run mssql:migrace` pod účtem pro migrace; první správce dostane heslo skriptem
    `npm run mssql:heslo`.
 4. Úloha Agenta z `mssql/agent/planovac_job.sql` (nebo Plánovač úloh).
 5. `next start` jako služba Windows za reverzní proxy s TLS.
@@ -176,6 +224,13 @@ Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–2
 - **Chybějící BLOCK predikát znamená „povoleno".** Kde Postgres neměl politiku (INSERT a
   DELETE na `zakazka`, DELETE na `provozni_denik`, vše na `audit_log`…), nesmí mít
   `udrzba_app` GRANT. Blokovaný UPDATE hlásí chybu 33504, ne nula řádků.
+- **Trigger v SQL Serveru běží až po zápisu.** Zámek, který v PostgreSQL běžel BEFORE,
+  musí rozhodovat podle `deleted`, ne podle tabulky — jinak by si uživatel přepsal
+  `vytvoreno_at` a obešel okno na opravu deníku (`smi_menit_zapis_deniku` bere hodnoty).
+  Razítko je vnořený UPDATE; ostatní triggery tabulky ho poznají přes
+  `trigger_nestlevel(object_id(N'dbo.<tabulka>_zmena')) > 0`.
+- **SQL Server 2016 nebere proměnnou jako cestu JSON** (`JSON_VALUE`, `JSON_MODIFY`) a nemá
+  `STRING_AGG` — klíče se párují přes `OPENJSON`, skládá se přes `FOR JSON` / `FOR XML`.
 - **`OUTPUT` nejde nad tabulkou s triggerem** (chyba 334) → id generuje aplikace, procedury
   `SET @id = NEWID()` před INSERT. Žádné `.returning()`.
 - **Sloupcový GRANT na INSERT neexistuje.** `vytvoreno_at` a `zmeneno_at` přepíše trigger.
@@ -195,7 +250,13 @@ Testovací data se nestěhují; do nové databáze se nahraje seed. Odhad 17–2
   `Date` (čte se jako text `CONVERT(char(10), x, 23)`), `bigint` jako text, JS `Date` se
   nikdy neváže jako parametr (šel by jako `datetime` s přesností 3 ms) — časy jdou jako ISO
   text.
-- **Express nemá Agenta ani snímky.** Plánovač z Plánovače úloh, testy s `mssql:reset`.
+- **Instance jsou oddělené servery.** Loginy i hesla má každá zvlášť a dotaz
+  `ZAKMAT.dbo.…` přes instance nejde (linked server nechceme). Proto `Udrzba_dev` leží na
+  TEST vedle kopie ZAKMATu a ostrá `Udrzba` na instanci ZAKMAT vedle ostrého.
+- **Snímky databáze potřebují serverové právo `CREATE DATABASE`**, které vlastník `Udrzba_dev` nemá
+  (a Express je nemá vůbec). `mssql:testy` pak po každém souboru databázi smaže, znovu
+  zmigruje a nahraje celý seed — funguje, jen pomaleji. Express navíc nemá Agenta →
+  Plánovač úloh.
 - **Podpisový klíč relace je stejně citlivý jako servisní klíč.** Kdo ho drží, vydá si
   libovolnou identitu. Patří výhradně na server, nikdy do gitu.
 - **Kód karty.** Formát v personalistice nemusí odpovídat tomu, co čte čtečka. Ověřit před

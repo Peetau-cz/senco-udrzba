@@ -3,12 +3,17 @@
 Sem patří všechno, co se pouští proti SQL Serveru. Rozhodnutí a postup přesunu ze
 Supabase popisuje `docs/NASAZENI.md`; tenhle soubor jen říká, co kde leží.
 
-| Adresář    | Obsah                                                                          | Kdo pouští                                    |
-| ---------- | ------------------------------------------------------------------------------ | --------------------------------------------- |
-| `migrace/` | schéma po vrstvách, číslované `0001_…`; soubory s `_` na začátku jsou šablony  | `npm run mssql:migrace` jako `udrzba_migrace` |
-| `seed/`    | testovací data, idempotentní SQL v pořadí názvu                                | `npm run mssql:seed`                          |
-| `testy/`   | T-SQL testy; neúspěch = `THROW 60000`, průběh `PRINT`                          | `npm run mssql:testy`                         |
-| `agent/`   | úloha SQL Server Agenta (noční plánovač); aplikuje IT jednou, potřebuje `msdb` | ručně                                         |
+| Adresář    | Obsah                                                                         | Kdo pouští                                   |
+| ---------- | ----------------------------------------------------------------------------- | -------------------------------------------- |
+| `migrace/` | schéma po vrstvách, číslované `0001_…`; soubory s `_` na začátku jsou šablony | `npm run mssql:migrace` jako člen `db_owner` |
+| `seed/`    | testovací data, idempotentní SQL v pořadí názvu                               | `npm run mssql:seed`                         |
+| `testy/`   | T-SQL testy; neúspěch = `THROW 60000`, průběh `PRINT`                         | `npm run mssql:testy`                        |
+| `agent/`   | (vznikne v R7) úloha SQL Server Agenta pro noční plánovač; aplikuje IT        | ručně                                        |
+
+Migrace běží pod účtem z `MSSQL_MIGRACE_USER`, který je v databázi členem `db_owner`:
+ve vývoji `senco_udr_test` na `SENS-SQL\TEST` (databázi `Udrzba_dev` založilo IT, viz
+`docs/NASAZENI.md` kap. 4), na lokálním serveru `udrzba_migrace` z `npm run mssql:init`.
+Běžící web ho nikdy nepoužívá.
 
 Aplikované migrace si databáze pamatuje v `dbo._migrace` i s otiskem obsahu — už
 aplikovaný soubor se nemění, změna patří do nové migrace.
@@ -32,7 +37,7 @@ npm run mssql:syntaxe
 ```
 
 Projde všechny `.sql` v tomhle adresáři parserem ScriptDom ze SQL Server Management
-Studia (gramatika SQL Serveru 2022). Pozná jen syntaxi, ne to, jestli tabulka nebo
+Studia (gramatika SQL Serveru 2016, stejná verze jako firemní server). Pozná jen syntaxi, ne to, jestli tabulka nebo
 sloupec existují — na to je potřeba databáze a `npm run mssql:testy`. Hodí se, když se
 skripty píšou dřív, než je server k dispozici.
 
@@ -44,6 +49,6 @@ skripty píšou dřív, než je server k dispozici.
   a `CREATE TRIGGER` musí být v dávce první.
 - Bezpečnostní politiky mají `SCHEMABINDING`: migrace, která mění sloupec použitý
   v predikátu, musí politiku shodit a znovu postavit (šablona
-  `migrace/_sablona_zmena_sloupce.sql`).
+  `migrace/_sablona_zmena_sloupce.sql` vznikne s RLS v kole R3).
 - Po `ALTER TABLE` se znovu vygeneruje auditní trigger té tabulky
   (`exec dbo.vytvor_auditni_trigger`).

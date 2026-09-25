@@ -2,16 +2,18 @@
  * Založení databáze a účtů na LOKÁLNÍM SQL Serveru (docs/NASAZENI.md).
  *
  * Běží pod správcem serveru (MSSQL_ADMIN_USER, typicky `sa`) nad `master`.
- * Na serveru od IT se nepouští - IT udělá totéž svými nástroji; co přesně,
- * vypíše `npm run mssql:init -- --jen-vypis`, aniž by se k čemukoli připojil.
+ * Na serveru od IT se nepouští - tam databázi zakládá IT skriptem z NASAZENI
+ * kap. 4 a vlastníka určí MSSQL_MIGRACE_USER. `npm run mssql:init -- --jen-vypis`
+ * vypíše lokální variantu, aniž by se k čemukoli připojil.
  *
  * Co vznikne:
- *   - databáze (MSSQL_DATABASE, výchozí Udrzba) s českou kolací a nastavením,
- *     na kterém stojí schéma (compatibility 150, RECURSIVE_TRIGGERS OFF,
+ *   - databáze (MSSQL_DATABASE, výchozí Udrzba) s kolací ZAKMATu a nastavením,
+ *     na kterém stojí schéma (compatibility 130 - server je SQL Server 2016,
+ *     RECURSIVE_TRIGGERS OFF,
  *     READ_COMMITTED_SNAPSHOT ON);
  *   - login `udrzba_migrace` jako VLASTNÍK databáze (migrace, seed, testy);
  *   - loginy `udrzba_app` a `udrzba_planovac` jen s právem připojit se -
- *     zbytek práv jim dá migrace 0006.
+ *     zbytek práv jim dá migrace z kola R3.
  *
  * Skript je idempotentní: co existuje, přeskočí. Hesla bere z .env.local.
  */
@@ -46,11 +48,11 @@ export function sestavPrikazy() {
     {
       popis: `databáze ${db}`,
       text: `if db_id(N'${db}') is null
-  create database [${db}] collate Czech_100_CI_AS;`,
+  create database [${db}] collate SQL_Czech_CP1250_CI_AS;`,
     },
     {
       popis: 'nastavení databáze',
-      text: `alter database [${db}] set compatibility_level = 150;
+      text: `alter database [${db}] set compatibility_level = 130;
 alter database [${db}] set recursive_triggers off;
 alter database [${db}] set read_committed_snapshot on with rollback immediate;`,
     },

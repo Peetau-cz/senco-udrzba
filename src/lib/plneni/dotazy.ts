@@ -12,6 +12,66 @@
 
 import { vytvorServerovehoKlienta } from '@/lib/supabase/server'
 import type { RadekPlneni } from '@/lib/plneni/vypocet'
+import type { Database } from '@/types/database.types'
+
+type StavZakazky = Database['public']['Enums']['stav_zakazky']
+type StavUkonu = Database['public']['Enums']['stav_ukonu']
+
+/**
+ * Řádek pohledu v_dnesni_plan. Tvar, na který se spoléhají komponenty - při
+ * výměně datové vrstvy se nemění, mění se jen dotaz, který ho plní.
+ */
+export type ZakazkaDnes = {
+  zakazka_id: string
+  zarizeni_id: string
+  oblast_id: string
+  zarizeni_nazev: string
+  inventarni_cislo: string | null
+  planovany_termin: string
+  stav: StavZakazky
+  prirazeno_uzivateli_id: string | null
+  profese_role_id: string
+  profese_nazev: string
+  kroku: number
+  vyrizeno: number
+}
+
+/** Řádek pohledu v_po_terminu. Totéž co dnešní plán, navíc s tím, jak dlouho už čeká. */
+export type ZakazkaPoTerminu = {
+  zakazka_id: string
+  zarizeni_id: string
+  oblast_id: string
+  zarizeni_nazev: string
+  inventarni_cislo: string | null
+  planovany_termin: string
+  stav: StavZakazky
+  prirazeno_uzivateli_id: string | null
+  profese_role_id: string
+  profese_nazev: string
+  dnu_zpozdeni: number
+  kroku: number
+  vyrizeno: number
+}
+
+/** Dokončená zakázka pro kartu „poslední provedené". Tvar, na který se spoléhají komponenty. */
+export type ProvedenaZakazka = {
+  id: string
+  dokonceno_at: string | null
+  planovany_termin: string
+  zarizeni: { id: string; nazev: string; inventarni_cislo: string | null; oblast_id: string }
+  dokoncil: { id: string; jmeno: string; prijmeni: string; email: string | null } | null
+}
+
+/** Zakázka měsíce v rozkliku oblasti. Tvar, na který se spoléhají komponenty. */
+export type ZakazkaVObdobi = {
+  id: string
+  planovany_termin: string
+  stav: StavZakazky
+  zarizeni: { id: string; nazev: string; inventarni_cislo: string | null; oblast_id: string }
+  profese: { id: string; nazev: string }
+  /** Jen stavy kroků - stačí na postup, viz `postupZakazky`. */
+  zakazka_ukon: { stav: StavUkonu }[]
+}
 
 /**
  * Plnění po oblastech za jedno období.
@@ -50,7 +110,7 @@ export async function nactiPlneni(obdobi: string): Promise<RadekPlneni[]> {
   })
 }
 
-export async function nactiDnesniPlan(limit = 50) {
+export async function nactiDnesniPlan(limit = 50): Promise<ZakazkaDnes[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
@@ -64,7 +124,7 @@ export async function nactiDnesniPlan(limit = 50) {
   return data ?? []
 }
 
-export async function nactiPoTerminu(limit = 50, oblastId?: string) {
+export async function nactiPoTerminu(limit = 50, oblastId?: string): Promise<ZakazkaPoTerminu[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   // Nejhorší nahoře: kdo se dívá na restance, řeší nejdřív to, co čeká nejdéle.
@@ -83,11 +143,8 @@ export async function nactiPoTerminu(limit = 50, oblastId?: string) {
   return data ?? []
 }
 
-export type ZakazkaPoTerminu = Awaited<ReturnType<typeof nactiPoTerminu>>[number]
-export type ZakazkaDnes = Awaited<ReturnType<typeof nactiDnesniPlan>>[number]
-
 /** Poslední dokončené údržby. Podklad pro kartu „poslední provedené". */
-export async function nactiPosledniProvedene(limit = 5) {
+export async function nactiPosledniProvedene(limit = 5): Promise<ProvedenaZakazka[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const { data, error } = await supabase
@@ -114,7 +171,10 @@ export async function nactiPosledniProvedene(limit = 5) {
  * Bere se z tabulky, ne z pohledu: pohled plnění je agregát a tady je potřeba
  * jednotlivá zakázka i s tím, kolik kroků v ní zbývá.
  */
-export async function nactiNesplneneVObdobi(oblastId: string, obdobi: string) {
+export async function nactiNesplneneVObdobi(
+  oblastId: string,
+  obdobi: string,
+): Promise<ZakazkaVObdobi[]> {
   const supabase = await vytvorServerovehoKlienta()
 
   const konec = konecMesice(obdobi)

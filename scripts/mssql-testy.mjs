@@ -9,7 +9,9 @@
  * Testy běží jako vlastník databáze bez vnější transakce: chyba v triggeru
  * v SQL Serveru vrátí celou transakci, takže se očekávané chyby chytají přes
  * TRY/CATCH a fixtury se opravdu zapíšou. Po každém souboru se proto databáze
- * vrací do výchozího stavu - snímkem, nebo smazáním objektů a novou migrací.
+ * vrací do výchozího stavu - snímkem, nebo smazáním objektů, novou migrací
+ * a celým seedem včetně osob. Snímek potřebuje serverové právo CREATE DATABASE;
+ * na serveru IT ho vlastník databáze nemá, takže tam běží ta pomalejší cesta.
  *
  * Úmluva pro testy: neúspěch = `THROW 60000, N'…', 1`; průběh se hlásí
  * `PRINT`. Práva se ověřují pod `EXECUTE AS USER = 'udrzba_app'` … `REVERT`.
@@ -27,9 +29,12 @@ import {
   smazVsechnyObjekty,
   vytvorSnimek,
 } from './lib/obnova.mjs'
+import { nahrajOsoby } from './lib/osoby-seed.mjs'
 import { nahrajSeedSql } from './lib/seed.mjs'
 
 const ADRESAR_TESTU = path.resolve('mssql', 'testy')
+// Obnova bez snímku musí skončit ve stejném stavu jako `npm run mssql:seed`.
+const HESLO_SEEDU = process.env.SEED_HESLO ?? 'Senco.Test123'
 
 async function vyberSoubory(filtry) {
   const vsechny = (await readdir(ADRESAR_TESTU).catch(() => []))
@@ -93,6 +98,7 @@ async function main() {
           await smazVsechnyObjekty(pool)
           await aplikujMigrace(pool, { log: () => {} })
           await nahrajSeedSql(pool, { log: () => {} })
+          await nahrajOsoby(pool, { heslo: HESLO_SEEDU, log: () => {} })
         } finally {
           await pool.close()
         }

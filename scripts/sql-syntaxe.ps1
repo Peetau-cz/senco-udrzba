@@ -22,8 +22,16 @@ if (-not $dll) {
 }
 
 Add-Type -Path $dll.FullName
-# 160 = gramatika SQL Serveru 2022; $true = QUOTED_IDENTIFIER ON jako v aplikaci.
-$parser = New-Object Microsoft.SqlServer.TransactSql.ScriptDom.TSql160Parser($true)
+# 130 = gramatika SQL Serveru 2016, na kterém SENS-SQL běží.
+# $true = QUOTED_IDENTIFIER ON jako v aplikaci.
+$parser = New-Object Microsoft.SqlServer.TransactSql.ScriptDom.TSql130Parser($true)
+
+# Gramatika 130 bere volání funkce jako obecný identifikátor, takže funkce
+# z novějších verzí propustí (string_agg prošel). Hlídají se proto zvlášť,
+# nad tokeny - komentáře a řetězce se nepočítají.
+$novejsiFunkce = @('STRING_AGG', 'TRIM', 'CONCAT_WS', 'TRANSLATE', 'GREATEST', 'LEAST',
+  'APPROX_COUNT_DISTINCT', 'GENERATE_SERIES', 'DATE_BUCKET', 'DATETRUNC', 'JSON_OBJECT',
+  'JSON_ARRAY', 'JSON_PATH_EXISTS')
 
 if (-not $Soubory) {
   $Soubory = Get-ChildItem (Join-Path $PSScriptRoot '..\mssql') -Recurse -Filter '*.sql' |
@@ -35,17 +43,31 @@ foreach ($soubor in $Soubory) {
   $cesta = (Resolve-Path $soubor).Path
   $chyby = $null
   $reader = New-Object System.IO.StreamReader($cesta, [System.Text.Encoding]::UTF8)
-  try { $null = $parser.Parse($reader, [ref]$chyby) } finally { $reader.Close() }
+  try { $strom = $parser.Parse($reader, [ref]$chyby) } finally { $reader.Close() }
+  $hlaseni = @($chyby | ForEach-Object {
+      'řádek {0}, sloupec {1}: {2}' -f $_.Line, $_.Column, $_.Message
+    })
+  if ($strom) {
+    $tokeny = $strom.ScriptTokenStream
+    for ($i = 0; $i -lt $tokeny.Count; $i++) {
+      $t = $tokeny[$i]
+      if ($t.TokenType -ne 'Identifier' -or $novejsiFunkce -notcontains $t.Text.ToUpper()) { continue }
+      # Jen volání: za jménem (přes mezery) následuje závorka.
+      $j = $i + 1
+      while ($j -lt $tokeny.Count -and $tokeny[$j].TokenType -eq 'WhiteSpace') { $j++ }
+      if ($j -lt $tokeny.Count -and $tokeny[$j].TokenType -eq 'LeftParenthesis') {
+        $hlaseni += 'řádek {0}, sloupec {1}: {2}() SQL Server 2016 nemá' -f $t.Line, $t.Column, $t.Text
+      }
+    }
+  }
   $koren = (Get-Location).Path
   $relativni = if ($cesta.StartsWith($koren)) { $cesta.Substring($koren.Length).TrimStart('\') } else { $cesta }
-  if ($chyby.Count -eq 0) {
+  if ($hlaseni.Count -eq 0) {
     Write-Output ('  ok   ' + $relativni)
   } else {
     Write-Output ('  CHYBA ' + $relativni)
-    foreach ($ch in $chyby) {
-      Write-Output ('         řádek {0}, sloupec {1}: {2}' -f $ch.Line, $ch.Column, $ch.Message)
-    }
-    $celkem += $chyby.Count
+    foreach ($h in $hlaseni) { Write-Output ('         ' + $h) }
+    $celkem += $hlaseni.Count
   }
 }
 
